@@ -165,6 +165,29 @@ export async function sendSessionCompleteNotification(
 }
 
 /**
+ * Send XP earned notification
+ */
+export async function sendXPEarnedNotification(amount: number): Promise<void> {
+  try {
+    // Play success haptic feedback
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Send notification
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⭐ XP Earned!',
+        body: `+${amount} XP - Great job completing that task!`,
+        sound: 'default',
+        data: { type: 'xp-earned', amount },
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.error('Error sending XP notification:', error);
+  }
+}
+
+/**
  * Cancel all pending notifications
  */
 export async function cancelAllNotifications(): Promise<void> {

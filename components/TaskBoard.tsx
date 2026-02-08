@@ -1,6 +1,8 @@
 import { COLORS } from '@/lib/constants';
 import { breakdownTask } from '@/lib/geminiService';
 import { Task } from '@/lib/types';
+import { sendXPEarnedNotification } from '@/lib/notificationService';
+import XPPopup from '@/components/XPPopup';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -27,6 +29,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
 }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isBreakingDown, setIsBreakingDown] = useState(false);
+  const [xpPopup, setXpPopup] = useState<{ visible: boolean; amount: number }>({
+    visible: false,
+    amount: 0,
+  });
 
   const addTask = async () => {
     if (!newTaskTitle.trim()) return;
@@ -53,7 +59,12 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         if (task.id === taskId) {
           const newSubtasks = task.subtasks.map(s => {
             if (s.id === subtaskId) {
-              if (!s.completed) onPointsChange(s.points);
+              if (!s.completed) {
+                onPointsChange(s.points);
+                // Show XP popup and notification
+                setXpPopup({ visible: true, amount: s.points });
+                sendXPEarnedNotification(s.points);
+              }
               return { ...s, completed: !s.completed };
             }
             return s;
@@ -184,6 +195,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           </View>
         )}
       </ScrollView>
+
+      {/* XP Popup */}
+      <XPPopup
+        visible={xpPopup.visible}
+        amount={xpPopup.amount}
+        onComplete={() => setXpPopup({ visible: false, amount: 0 })}
+      />
     </SafeAreaView>
   );
 };
