@@ -1,6 +1,6 @@
 import { CharacterSelect } from '@/components/CharacterSelect';
 import AppBlocker from '@/components/AppBlocker';
-import { isFocusModeEnabled, setFocusModeEnabled } from '@/lib/focusModeService';
+import { isFocusModeEnabled, _setFocusModeEnabledAndNotify } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React, { useState } from 'react';
@@ -9,6 +9,7 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 export default function SettingsScreen() {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterType>('llama');
   const [focusModeEnabled, setFocusModeEnabledState] = useState<boolean>(true);
+  const [showFocusHint, setShowFocusHint] = useState<boolean>(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -51,7 +52,13 @@ export default function SettingsScreen() {
                 value={focusModeEnabled}
                 onValueChange={async (v) => {
                   setFocusModeEnabledState(v);
-                  try { await setFocusModeEnabled(v); } catch (e) {}
+                  try { 
+                    await _setFocusModeEnabledAndNotify(v);
+                    if (v) {
+                      setShowFocusHint(true);
+                      setTimeout(() => setShowFocusHint(false), 4000);
+                    }
+                  } catch (e) {}
                 }}
                 trackColor={{ false: COLORS.slate300, true: COLORS.secondary }}
                 thumbColor={focusModeEnabled ? COLORS.white : COLORS.slate400}
@@ -59,6 +66,11 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+        {showFocusHint && (
+          <View style={styles.focusHint}>
+            <Text style={styles.focusHintText}>Focus Mode enabled — you'll get warnings if you leave during a Pomodoro.</Text>
+          </View>
+        )}
 
         <View style={styles.infoSection}>
           <View style={styles.infoBox}>
@@ -148,6 +160,20 @@ const styles = StyleSheet.create({
   focusToggleDesc: {
     fontSize: 12,
     color: COLORS.slate500,
+  },
+  focusHint: {
+    marginHorizontal: 0,
+    marginTop: 10,
+    backgroundColor: COLORS.slate50,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 10,
+  },
+  focusHintText: {
+    color: COLORS.slate700,
+    fontSize: 13,
+    fontWeight: '600',
   },
   infoBox: {
     backgroundColor: COLORS.white,
