@@ -1,6 +1,5 @@
 import { Dashboard } from '@/components/Dashboard';
 import { COLORS } from '@/lib/constants';
-import { appManager } from '@/lib/integrationExample';
 import { CharacterType, Task, UserProfile } from '@/lib/types';
 import React, { useEffect, useRef, useState } from 'react';
 import {
