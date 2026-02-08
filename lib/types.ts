@@ -132,3 +132,35 @@ export interface TeamInvite {
   timesUsed: number;
   isActive: boolean;
 }
+// ============================================
+// App Blocker / Tracker Types
+// ============================================
+
+export interface BlockedApp {
+  id: string;
+  packageName: string; // e.g., 'com.facebook.katana'
+  name: string; // e.g., 'Facebook'
+  icon?: string; // emoji or image path
+  isBlocked: boolean;
+  category?: 'social' | 'games' | 'entertainment' | 'communication' | 'other';
+  blockedAt?: Date;
+}
+
+export interface AppBlockerConfig {
+  enabled: boolean;
+  blockedApps: BlockedApp[];
+  blockOnPomodoroStart: boolean; // Auto-block during Pomodoro
+  allowEmergencyBypass: boolean; // Allow quick exit with warning
+  emergencies: number; // Number of bypasses used
+}
+
+export interface AppUsageSession {
+  id: string;
+  appPackageName: string;
+  appName: string;
+  startTime: Date;
+  endTime?: Date;
+  durationMs: number;
+  wasBlocked: boolean;
+  pomodoroSessionId?: string; // Link to Pomodoro session
+}

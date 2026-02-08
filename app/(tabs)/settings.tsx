@@ -1,4 +1,5 @@
 import { CharacterSelect } from '@/components/CharacterSelect';
+import AppBlocker from '@/components/AppBlocker';
 import { COLORS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React, { useState } from 'react';
@@ -45,6 +46,10 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+
+        <View style={styles.appBlockerSection}>
+          <AppBlocker />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -78,6 +83,13 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     gap: 12,
+  },
+  appBlockerSection: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    marginTop: 24,
+    marginBottom: 24,
+    overflow: 'hidden',
   },
   infoBox: {
     backgroundColor: COLORS.white,
