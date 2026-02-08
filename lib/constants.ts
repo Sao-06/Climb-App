@@ -13,13 +13,14 @@ export interface CharacterData {
   description: string;
   color: string;
   emoji: string;
+  image?: string; // Optional image path
 }
 
 export const CHARACTERS: CharacterData[] = [
-  { id: 'llama', name: 'Luna the Llama', description: 'Graceful and steady, Luna loves high-altitude ponchos.', color: '#F3E5AB', emoji: '🦙' },
-  { id: 'leopard', name: 'Jago the Jaguar', description: 'Fast and focused, Leo uses the latest high-tech climbing gear.', color: '#FFD700', emoji: '🐆' },
-  { id: 'guineapig', name: 'Gina the Guinea Pig', description: 'Small but mighty, Gina climbs in her favorite polka-dot dress.', color: '#C19A6B', emoji: '🐹' },
-  { id: 'elephant', name: 'Ellie the Elephant', description: 'Wise and strong, Ellie wears traditional climbing silks.', color: '#A9A9A9', emoji: '🐘' },
+  { id: 'llama', name: 'Luna the Llama', description: 'Graceful and steady, Luna loves high-altitude ponchos.', color: '#F3E5AB', emoji: '🦙', image: require('@/assets/images/lama.png') },
+  { id: 'leopard', name: 'Jago the Jaguar', description: 'Fast and focused, Leo uses the latest high-tech climbing gear.', color: '#FFD700', emoji: '🐆', image: require('@/assets/images/jaguar.png') },
+  { id: 'guineapig', name: 'Gina the Guinea Pig', description: 'Small but mighty, Gina climbs in her favorite polka-dot dress.', color: '#C19A6B', emoji: '🐹', image: require('@/assets/images/guinea pig.png') },
+  { id: 'elephant', name: 'Ellie the Elephant', description: 'Wise and strong, Ellie wears traditional climbing silks.', color: '#A9A9A9', emoji: '🐘', image: require('@/assets/images/elephant.png') },
 ];
 
 export const COLORS = {

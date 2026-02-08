@@ -10,6 +10,7 @@ import { Team, UserProfile } from '@/lib/types';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Image,
     Modal,
     SafeAreaView,
     ScrollView,
@@ -23,6 +24,16 @@ import {
 interface TeamDashboardProps {
   user: UserProfile;
 }
+
+const getCharacterImage = (characterType: string) => {
+  const images: Record<string, any> = {
+    llama: require('@/assets/images/lama.png'),
+    leopard: require('@/assets/images/jaguar.png'),
+    guineapig: require('@/assets/images/guinea pig.png'),
+    elephant: require('@/assets/images/elephant.png'),
+  };
+  return images[characterType] || images.llama;
+};
 
 export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
   const [userTeams, setUserTeams] = useState<Team[]>([]);
@@ -386,7 +397,10 @@ const TeamDetailView: React.FC<TeamDetailProps> = ({ team, user, onClose }) => {
         <Text style={styles.sectionTitle}>Members ({team.members.length})</Text>
         {team.members.map(member => (
           <View key={member.userId} style={styles.memberItem}>
-            <Text style={styles.memberEmoji}>{member.characterType === 'llama' ? '🦙' : member.characterType === 'leopard' ? '🐆' : member.characterType === 'guineapig' ? '🐹' : '🐘'}</Text>
+            <Image
+              source={getCharacterImage(member.characterType)}
+              style={styles.memberImage}
+            />
             <View style={styles.memberInfo}>
               <View style={styles.memberNameRow}>
                 <Text style={styles.memberName}>{member.name}</Text>
@@ -735,8 +749,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate100,
   },
-  memberEmoji: {
-    fontSize: 24,
+  memberImage: {
+    width: 40,
+    height: 40,
     marginRight: 12,
   },
   memberInfo: {

@@ -13,6 +13,16 @@ interface ClimberProps {
   isMoving?: boolean;
 }
 
+const getCharacterImage = (type: CharacterType) => {
+  const images: Record<CharacterType, any> = {
+    llama: require('@/assets/images/lama.png'),
+    leopard: require('@/assets/images/jaguar.png'),
+    guineapig: require('@/assets/images/guinea pig.png'),
+    elephant: require('@/assets/images/elephant.png')
+  };
+  return images[type];
+};
+
 const getEmoji = (type: CharacterType): string => {
   const emojis: Record<CharacterType, string> = {
     llama: '🦙',
