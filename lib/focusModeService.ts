@@ -1,20 +1,11 @@
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from './asyncStorageMock';
 import { trackEvent } from './analyticsService';
+import { FocusSession } from './types';
+import { sendFocusModeWarning } from './notificationService';
 
-export interface FocusSession {
-  id: string;
-  sessionId: string; // linked to Pomodoro session
-  startTime: number;
-  endTime?: number;
-  totalFocusTime: number; // time actually in app
-  totalDuration: number; // wall clock time
-  appLeaveTimes: { leftAt: number; returnedAt: number }[];
-  exitCount: number;
-  presetName: string;
-  completed: boolean;
-  pointsEarned: number;
-}
+// Re-export for convenience
+export type { FocusSession };
 
 interface FocusSessionState {
   isActive: boolean;
@@ -132,6 +123,24 @@ const handleAppStateChange = (state: AppStateStatus) => {
         returnedAt: Date.now(),
       });
       sessionState.lastBackground = null;
+
+      // Send notification warning
+      const totalTimeAway = sessionState.currentSession.appLeaveTimes.reduce(
+        (sum, leave) => sum + (leave.returnedAt - leave.leftAt),
+        0
+      );
+      const formatTime = (ms: number) => {
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+        return `${seconds}s`;
+      };
+
+      sendFocusModeWarning(
+        sessionState.currentSession.exitCount,
+        sessionState.currentSession.presetName,
+        formatTime(totalTimeAway)
+      );
     }
   }
 

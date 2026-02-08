@@ -5,6 +5,7 @@ import { COLORS } from '@/lib/constants';
 
 const GlobalFocusIndicator: React.FC = () => {
   const [enabled, setEnabled] = useState<boolean>(false);
+  const [showTip, setShowTip] = useState(false);
 
   const opacity = useRef(new Animated.Value(0)).current;
   const baseScale = useRef(new Animated.Value(0.9)).current;
@@ -62,9 +63,7 @@ const GlobalFocusIndicator: React.FC = () => {
 
   if (!enabled) return null;
 
-  const combinedScale = Animated.multiply(baseScale, pulseScale) as Animated.AnimatedMultiplication; // type hint
-
-  const [showTip, setShowTip] = useState(false);
+  const combinedScale = Animated.multiply(baseScale, pulseScale);
 
   return (
     <View style={styles.wrapper}>

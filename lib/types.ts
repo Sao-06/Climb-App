@@ -20,9 +20,12 @@ export interface PomodoroPreset {
 export interface Task {
   id: string;
   title: string;
+  description?: string;
   subtasks: SubTask[];
   points: number;
   completed: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  createdAt?: Date;
 }
 
 export interface SubTask {
@@ -72,6 +75,9 @@ export interface TeamMember {
 
 export interface TeamMission extends Task {
   teamId: string;
+  description?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  createdAt?: Date;
   progress: number; // percentage (0-100)
   teamMembersCompleted: string[]; // userIds who contributed
   milestone?: {

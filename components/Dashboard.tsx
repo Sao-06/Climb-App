@@ -1,5 +1,4 @@
 import { Climber } from '@/components/Climber';
-import FocusModeWarning from '@/components/FocusModeWarning';
 import { COLORS, PRESETS } from '@/lib/constants';
 import { getCoachAdvice } from '@/lib/geminiService';
 import { PomodoroPreset, UserProfile, FocusSession } from '@/lib/types';
@@ -9,8 +8,9 @@ import {
   getCurrentFocusSession,
   abortFocusSession,
   disposeFocusMode,
-  FocusSession as FocusSessionType,
+  isFocusModeEnabled,
 } from '@/lib/focusModeService';
+import { initializeNotifications } from '@/lib/notificationService';
 import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -27,7 +27,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { isFocusModeEnabled } from '@/lib/focusModeService';
 
 interface DashboardProps {
   user: UserProfile;
@@ -53,10 +52,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [selectedPreset, setSelectedPreset] = useState<PomodoroPreset>(PRESETS[0]);
   const [advice, setAdvice] = useState("Loading motivation...");
   const [isMoving, setIsMoving] = useState(false);
-  const [currentFocusSession, setCurrentFocusSession] = useState<FocusSessionType | null>(null);
-  const [showFocusWarning, setShowFocusWarning] = useState(false);
+  const [currentFocusSession, setCurrentFocusSession] = useState<FocusSession | null>(null);
   const [showSessionStats, setShowSessionStats] = useState(false);
-  const [lastSessionStats, setLastSessionStats] = useState<FocusSessionType | null>(null);
+  const [lastSessionStats, setLastSessionStats] = useState<FocusSession | null>(null);
   const [focusModeEnabled, setFocusModeEnabled] = useState<boolean>(true);
   
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -66,6 +64,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const appStateSubscription = useRef<any>(null);
 
   useEffect(() => {
+    // Initialize notifications on mount
+    initializeNotifications();
+
     const fetchAdvice = async () => {
       const msg = await getCoachAdvice(user.points, user.climbHeight);
       setAdvice(msg);
@@ -391,20 +392,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </View>
       </ScrollView>
 
-      {/* Focus Mode Warning Modal */}
-      <FocusModeWarning
-        visible={showFocusWarning}
-        focusSession={currentFocusSession}
-        onContinueFocus={() => setShowFocusWarning(false)}
-        onAbortSession={async () => {
-          setShowFocusWarning(false);
-          setActiveTimer(null);
-          if (currentFocusSession) {
-            await endFocusSession(0);
-          }
-          setCurrentFocusSession(null);
-        }}
-      />
+      {/* Focus Mode notifications are now sent automatically via notificationService */}
 
       {/* Session Stats Modal */}
       {lastSessionStats && (
