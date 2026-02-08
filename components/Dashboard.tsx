@@ -1,33 +1,31 @@
 import { Climber } from '@/components/Climber';
 import FocusModeWarning from '@/components/FocusModeWarning';
 import { COLORS, PRESETS } from '@/lib/constants';
-import { getCoachAdvice } from '@/lib/geminiService';
-import { PomodoroPreset, UserProfile, FocusSession } from '@/lib/types';
 import {
-  startFocusSession,
-  endFocusSession,
-  getCurrentFocusSession,
-  abortFocusSession,
-  disposeFocusMode,
-  FocusSession as FocusSessionType,
+    disposeFocusMode,
+    endFocusSession,
+    FocusSession as FocusSessionType,
+    isFocusModeEnabled,
+    startFocusSession
 } from '@/lib/focusModeService';
+import { getCoachAdvice } from '@/lib/geminiService';
+import { PomodoroPreset, UserProfile } from '@/lib/types';
 import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  AppState,
-  AppStateStatus,
-  Dimensions,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    AppState,
+    AppStateStatus,
+    Dimensions,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { isFocusModeEnabled } from '@/lib/focusModeService';
 
 interface DashboardProps {
   user: UserProfile;
