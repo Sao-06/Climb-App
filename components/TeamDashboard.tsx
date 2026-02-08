@@ -1,4 +1,4 @@
-import { CHARACTERS, COLORS } from '@/lib/constants';
+import { COLORS } from '@/lib/constants';
 import {
     createTeam,
     getAllTeams,
@@ -26,8 +26,13 @@ interface TeamDashboardProps {
 }
 
 const getCharacterImage = (characterType: string) => {
-  const character = CHARACTERS.find(c => c.id === characterType);
-  return character?.image || CHARACTERS[0].image;
+  const images: Record<string, any> = {
+    llama: require('@/assets/images/lama.png'),
+    leopard: require('@/assets/images/jaguar.png'),
+    guineapig: require('@/assets/images/guinea pig.png'),
+    elephant: require('@/assets/images/elephant.png'),
+  };
+  return images[characterType] || images.llama;
 };
 
 export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {

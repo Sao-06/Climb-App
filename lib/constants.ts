@@ -1,11 +1,5 @@
 import { CharacterType, PomodoroPreset } from './types';
 
-// Import character PNG images
-const llamaImage = require('@/assets/images/lama.png');
-const jaguarImage = require('@/assets/images/jaguar.png');
-const guineapigImage = require('@/assets/images/guinea pig.png');
-const elephantImage = require('@/assets/images/elephant.png');
-
 export const PRESETS: PomodoroPreset[] = [
   { id: 'classic', name: "Classic", focusMin: 25, shortBreakMin: 5, longBreakMin: 15, longBreakAfter: 4 },
   { id: 'short', name: "Short", focusMin: 15, shortBreakMin: 3, longBreakMin: 10, longBreakAfter: 4 },
@@ -19,14 +13,14 @@ export interface CharacterData {
   description: string;
   color: string;
   emoji: string;
-  image?: any; // Imported image module
+  image?: string; // Optional image path
 }
 
 export const CHARACTERS: CharacterData[] = [
-  { id: 'llama', name: 'Luna the Llama', description: 'Graceful and steady, Luna loves high-altitude ponchos.', color: '#F3E5AB', emoji: '🦙', image: llamaImage },
-  { id: 'leopard', name: 'Jago the Jaguar', description: 'Fast and focused, Leo uses the latest high-tech climbing gear.', color: '#FFD700', emoji: '🐆', image: jaguarImage },
-  { id: 'guineapig', name: 'Gina the Guinea Pig', description: 'Small but mighty, Gina climbs in her favorite polka-dot dress.', color: '#C19A6B', emoji: '🐹', image: guineapigImage },
-  { id: 'elephant', name: 'Ellie the Elephant', description: 'Wise and strong, Ellie wears traditional climbing silks.', color: '#A9A9A9', emoji: '🐘', image: elephantImage },
+  { id: 'llama', name: 'Luna the Llama', description: 'Graceful and steady, Luna loves high-altitude ponchos.', color: '#F3E5AB', emoji: '🦙', image: require('@/assets/images/lama.png') },
+  { id: 'leopard', name: 'Jago the Jaguar', description: 'Fast and focused, Leo uses the latest high-tech climbing gear.', color: '#FFD700', emoji: '🐆', image: require('@/assets/images/jaguar.png') },
+  { id: 'guineapig', name: 'Gina the Guinea Pig', description: 'Small but mighty, Gina climbs in her favorite polka-dot dress.', color: '#C19A6B', emoji: '🐹', image: require('@/assets/images/guinea pig.png') },
+  { id: 'elephant', name: 'Ellie the Elephant', description: 'Wise and strong, Ellie wears traditional climbing silks.', color: '#A9A9A9', emoji: '🐘', image: require('@/assets/images/elephant.png') },
 ];
 
 export const COLORS = {

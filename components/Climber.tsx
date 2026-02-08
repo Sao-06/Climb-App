@@ -1,7 +1,6 @@
-import { CHARACTERS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 interface ClimberProps {
   type: CharacterType;
@@ -15,13 +14,13 @@ interface ClimberProps {
 }
 
 const getCharacterImage = (type: CharacterType) => {
-  const character = CHARACTERS.find(c => c.id === type);
-  return character?.image || null;
-};
-
-const getEmoji = (type: CharacterType): string => {
-  const character = CHARACTERS.find(c => c.id === type);
-  return character?.emoji || '🦙';
+  const images: Record<CharacterType, any> = {
+    llama: require('@/assets/images/lama.png'),
+    leopard: require('@/assets/images/jaguar.png'),
+    guineapig: require('@/assets/images/guinea pig.png'),
+    elephant: require('@/assets/images/elephant.png')
+  };
+  return images[type];
 };
 
 const getSizeStyle = (size: 'sm' | 'md' | 'lg' = 'md') => {
@@ -40,7 +39,7 @@ export const Climber: React.FC<ClimberProps> = ({
   isMoving = false
 }) => {
   const sizeStyle = getSizeStyle(size);
-  const emoji = getEmoji(type);
+  const characterImage = getCharacterImage(type);
 
   const styles = StyleSheet.create({
     container: {
@@ -50,15 +49,16 @@ export const Climber: React.FC<ClimberProps> = ({
       alignItems: 'center',
       transform: isMoving ? [{ scale: 1.1 }] : [{ scale: 1 }],
     },
-    emoji: {
-      fontSize: sizeStyle.fontSize,
-      lineHeight: sizeStyle.fontSize + 10,
+    image: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'contain',
     }
   });
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <Image source={characterImage} style={styles.image} />
     </View>
   );
 };
