@@ -1,19 +1,80 @@
+import { TeamDashboard } from '@/components/TeamDashboard';
 import { COLORS } from '@/lib/constants';
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { getUserProfile } from '@/lib/persistenceService';
+import { UserProfile } from '@/lib/types';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text } from 'react-native';
 
 export default function SocialScreen() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.emoji}>🤝</Text>
-        <Text style={styles.title}>Multiplayer Coming Soon</Text>
-        <Text style={styles.description}>
-          Soon you'll be able to form climbing parties with friends and conquer the world's highest digital peaks together.
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      // Get user profile from persistence service
+      const profile = await getUserProfile();
+      if (profile) {
+        setUser(profile);
+      } else {
+        // Fallback default user
+        setUser({
+          name: 'Climber',
+          level: 1,
+          points: 0,
+          climbHeight: 0,
+          totalFocusTime: 0,
+          selectedCharacter: 'llama',
+          avatar: {
+            baseColor: '#e2e8f0',
+            hat: 'none',
+            gear: 'none',
+          },
+          isDistracted: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Set default if there's an error
+      setUser({
+        name: 'Climber',
+        level: 1,
+        points: 0,
+        climbHeight: 0,
+        totalFocusTime: 0,
+        selectedCharacter: 'llama',
+        avatar: {
+          baseColor: '#e2e8f0',
+          hat: 'none',
+          gear: 'none',
+        },
+        isDistracted: false,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>Error loading profile</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return <TeamDashboard user={user} />;
 }
 
 const styles = StyleSheet.create({
@@ -22,38 +83,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate50,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
   },
-  content: {
-    backgroundColor: COLORS.white,
-    borderRadius: 24,
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  emoji: {
-    fontSize: 64,
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: COLORS.slate800,
-    marginBottom: 16,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  description: {
-    fontSize: 14,
-    color: COLORS.slate400,
-    textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 280,
-    fontWeight: '500',
+  errorText: {
+    fontSize: 16,
+    color: COLORS.slate500,
   },
 });

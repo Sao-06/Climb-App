@@ -60,3 +60,78 @@ export interface AppUsage {
   millis: number;
   isProductive: boolean;
 }
+
+// ============================================
+// Team-related Types
+// ============================================
+
+export interface TeamMember {
+  userId: string;
+  name: string;
+  characterType: CharacterType;
+  joinedAt: Date;
+  role: 'owner' | 'admin' | 'member';
+  individualMissionProgress: number; // percentage (0-100)
+  pomodoroSessionsCompleted: number;
+}
+
+export interface TeamMission extends Task {
+  teamId: string;
+  progress: number; // percentage (0-100)
+  teamMembersCompleted: string[]; // userIds who contributed
+  milestone?: {
+    name: string;
+    requiredProgress: number;
+    reward: number;
+  };
+}
+
+export interface TeamStreak {
+  currentStreak: number; // days
+  allMembersConsecutiveDays: number; // consecutive days all members completed Pomodoro
+  streakMultiplier: number; // 1.0 + (0.1 * currentStreak), capped at 3.0
+  lastSessionDate: Date;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  members: TeamMember[];
+  isPublic: boolean;
+  inviteCode?: string; // required for private teams
+  maxMembers: number;
+  createdAt: Date;
+  updatedAt: Date;
+  // Missions
+  individualMissions: TeamMission[]; // each member does these
+  sharedMissions: TeamMission[]; // team works together on these
+  // Rewards & Streaks
+  teamPoints: number;
+  teamLevel: number;
+  teamRewards: TeamReward[];
+  streak: TeamStreak;
+}
+
+export interface TeamReward {
+  id: string;
+  name: string;
+  description: string;
+  points: number;
+  icon: string;
+  unlockedAt?: Date;
+  milestone: number; // progress % required to unlock
+}
+
+export interface TeamInvite {
+  id: string;
+  teamId: string;
+  code: string; // shareable code
+  createdBy: string;
+  createdAt: Date;
+  expiresAt?: Date;
+  maxUses?: number;
+  timesUsed: number;
+  isActive: boolean;
+}
