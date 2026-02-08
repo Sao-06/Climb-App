@@ -21,10 +21,10 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   subtasks: SubTask[];
   points: number;
   completed: boolean;
-  difficulty?: 'easy' | 'medium' | 'hard';
   createdAt?: Date;
 }
 
@@ -75,9 +75,6 @@ export interface TeamMember {
 
 export interface TeamMission extends Task {
   teamId: string;
-  description?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  createdAt?: Date;
   progress: number; // percentage (0-100)
   teamMembersCompleted: string[]; // userIds who contributed
   milestone?: {
@@ -137,50 +134,4 @@ export interface TeamInvite {
   maxUses?: number;
   timesUsed: number;
   isActive: boolean;
-}
-// ============================================
-// App Blocker / Tracker Types
-// ============================================
-
-export interface BlockedApp {
-  id: string;
-  packageName: string; // e.g., 'com.facebook.katana'
-  name: string; // e.g., 'Facebook'
-  icon?: string; // emoji or image path
-  isBlocked: boolean;
-  category?: 'social' | 'games' | 'entertainment' | 'communication' | 'other';
-  blockedAt?: Date;
-}
-
-export interface AppBlockerConfig {
-  enabled: boolean;
-  blockedApps: BlockedApp[];
-  blockOnPomodoroStart: boolean; // Auto-block during Pomodoro
-  allowEmergencyBypass: boolean; // Allow quick exit with warning
-  emergencies: number; // Number of bypasses used
-}
-
-export interface AppUsageSession {
-  id: string;
-  appPackageName: string;
-  appName: string;
-  startTime: Date;
-  endTime?: Date;
-  durationMs: number;
-  wasBlocked: boolean;
-  pomodoroSessionId?: string; // Link to Pomodoro session
-}
-
-export interface FocusSession {
-  id: string;
-  sessionId: string; // linked to Pomodoro session
-  startTime: number;
-  endTime?: number;
-  totalFocusTime: number; // time actually in app
-  totalDuration: number; // wall clock time
-  appLeaveTimes: { leftAt: number; returnedAt: number }[];
-  exitCount: number;
-  presetName: string;
-  completed: boolean;
-  pointsEarned: number;
 }
