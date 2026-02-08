@@ -164,3 +164,17 @@ export interface AppUsageSession {
   wasBlocked: boolean;
   pomodoroSessionId?: string; // Link to Pomodoro session
 }
+
+export interface FocusSession {
+  id: string;
+  sessionId: string; // linked to Pomodoro session
+  startTime: number;
+  endTime?: number;
+  totalFocusTime: number; // time actually in app
+  totalDuration: number; // wall clock time
+  appLeaveTimes: { leftAt: number; returnedAt: number }[];
+  exitCount: number;
+  presetName: string;
+  completed: boolean;
+  pointsEarned: number;
+}

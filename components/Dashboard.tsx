@@ -1,12 +1,24 @@
 import { Climber } from '@/components/Climber';
+import FocusModeWarning from '@/components/FocusModeWarning';
 import { COLORS, PRESETS } from '@/lib/constants';
 import { getCoachAdvice } from '@/lib/geminiService';
-import { PomodoroPreset, UserProfile } from '@/lib/types';
+import { PomodoroPreset, UserProfile, FocusSession } from '@/lib/types';
+import {
+  startFocusSession,
+  endFocusSession,
+  getCurrentFocusSession,
+  abortFocusSession,
+  disposeFocusMode,
+  FocusSession as FocusSessionType,
+} from '@/lib/focusModeService';
 import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
+    AppState,
+    AppStateStatus,
     Dimensions,
+    Modal,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -40,10 +52,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [selectedPreset, setSelectedPreset] = useState<PomodoroPreset>(PRESETS[0]);
   const [advice, setAdvice] = useState("Loading motivation...");
   const [isMoving, setIsMoving] = useState(false);
+  const [currentFocusSession, setCurrentFocusSession] = useState<FocusSessionType | null>(null);
+  const [showFocusWarning, setShowFocusWarning] = useState(false);
+  const [showSessionStats, setShowSessionStats] = useState(false);
+  const [lastSessionStats, setLastSessionStats] = useState<FocusSessionType | null>(null);
   
   const soundRef = useRef<Audio.Sound | null>(null);
   const prevHeight = useRef(user.climbHeight);
   const climberPosition = useRef(new Animated.Value(0)).current;
+  const appStateRef = useRef<AppStateStatus>('active');
+  const appStateSubscription = useRef<any>(null);
 
   useEffect(() => {
     const fetchAdvice = async () => {
@@ -120,6 +138,49 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
   }, [activeTimer]);
 
+  // Handle app state changes and show focus warning
+  useEffect(() => {
+    const handleAppStateChange = (state: AppStateStatus) => {
+      appStateRef.current = state;
+      
+      if (activeTimer !== null && currentFocusSession) {
+        // Only show warning if app goes to background/inactive
+        if (state === 'background' || state === 'inactive') {
+          setShowFocusWarning(true);
+        } else if (state === 'active') {
+          setShowFocusWarning(false);
+        }
+      }
+    };
+
+    appStateSubscription.current = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      if (appStateSubscription.current) {
+        appStateSubscription.current.remove();
+      }
+    };
+  }, [activeTimer, currentFocusSession]);
+
+  // Track focus session when timer starts
+  useEffect(() => {
+    if (activeTimer !== null && !currentFocusSession && selectedPreset) {
+      const session = startFocusSession(`timer_${Date.now()}`, selectedPreset.name);
+      setCurrentFocusSession(session);
+    }
+  }, [activeTimer]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      disposeFocusMode();
+      if (appStateSubscription.current) {
+        appStateSubscription.current.remove();
+      }
+    };
+  }, []);
+
+
   useEffect(() => {
     if (!focusRequest) return;
     if (activeTimer !== null) {
@@ -132,13 +193,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onFocusRequestHandled?.();
   }, [focusRequest?.token]);
 
-  const handleSessionComplete = () => {
+  const handleSessionComplete = async () => {
     const focusMinutes = selectedPreset.focusMin;
     const pointsEarned = focusMinutes * 10;
     const heightGain = focusMinutes * 10;
     
     onPointsChange(pointsEarned);
     onHeightChange(heightGain);
+
+    // End focus session and show stats
+    if (currentFocusSession) {
+      const completedSession = await endFocusSession(pointsEarned);
+      if (completedSession) {
+        setLastSessionStats(completedSession);
+        setShowSessionStats(true);
+      }
+    }
+    setCurrentFocusSession(null);
   };
 
   const startSession = (preset: PomodoroPreset) => {
@@ -242,7 +313,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ACTIVE: {selectedPreset.name}
               </Text>
               <TouchableOpacity
-                onPress={() => setActiveTimer(null)}
+                onPress={async () => {
+                  setActiveTimer(null);
+                  if (currentFocusSession) {
+                    await endFocusSession(0); // 0 points for abandoned session
+                  }
+                  setCurrentFocusSession(null);
+                }}
                 style={styles.abortButton}
               >
                 <Text style={styles.abortButtonText}>ABORT TO BASECAMP</Text>
@@ -297,6 +374,99 @@ export const Dashboard: React.FC<DashboardProps> = ({
           )}
         </View>
       </ScrollView>
+
+      {/* Focus Mode Warning Modal */}
+      <FocusModeWarning
+        visible={showFocusWarning}
+        focusSession={currentFocusSession}
+        onContinueFocus={() => setShowFocusWarning(false)}
+        onAbortSession={async () => {
+          setShowFocusWarning(false);
+          setActiveTimer(null);
+          if (currentFocusSession) {
+            await endFocusSession(0);
+          }
+          setCurrentFocusSession(null);
+        }}
+      />
+
+      {/* Session Stats Modal */}
+      {lastSessionStats && (
+        <Modal visible={showSessionStats} transparent animationType="fade">
+          <SafeAreaView style={styles.statsOverlay}>
+            <View style={styles.statsModalContainer}>
+              <TouchableOpacity
+                onPress={() => setShowSessionStats(false)}
+                style={styles.statsCloseButton}
+              >
+                <Text style={styles.statsCloseText}>✕</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.statsModalTitle}>Session Complete! 🎉</Text>
+
+              <View style={styles.statsCard}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Preset</Text>
+                  <Text style={styles.statRowValue}>{lastSessionStats.presetName}</Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Focus Time</Text>
+                  <Text style={styles.statRowValue}>
+                    {Math.floor(lastSessionStats.totalFocusTime / 60000)}m{' '}
+                    {Math.floor((lastSessionStats.totalFocusTime % 60000) / 1000)}s
+                  </Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Total Time</Text>
+                  <Text style={styles.statRowValue}>
+                    {Math.floor(lastSessionStats.totalDuration / 60000)}m{' '}
+                    {Math.floor((lastSessionStats.totalDuration % 60000) / 1000)}s
+                  </Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Times Left App</Text>
+                  <Text style={[styles.statRowValue, lastSessionStats.exitCount > 0 && styles.warningValue]}>
+                    {lastSessionStats.exitCount}
+                  </Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Points Earned</Text>
+                  <Text style={[styles.statRowValue, styles.successValue]}>
+                    +{lastSessionStats.pointsEarned}
+                  </Text>
+                </View>
+              </View>
+
+              {lastSessionStats.exitCount > 0 && (
+                <View style={styles.warningMessage}>
+                  <Text style={styles.warningMessageText}>
+                    💡 Tip: Minimal distractions lead to better focus and higher rewards!
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={() => setShowSessionStats(false)}
+                style={styles.statsCloseModalButton}
+              >
+                <Text style={styles.statsCloseModalButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -563,6 +733,101 @@ const styles = StyleSheet.create({
   beginButtonArrow: {
     marginLeft: 8,
     fontSize: 16,
+    color: COLORS.white,
+  },
+  statsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsModalContainer: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 24,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  statsCloseButton: {
+    alignSelf: 'flex-end',
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statsCloseText: {
+    fontSize: 24,
+    color: COLORS.slate400,
+    fontWeight: 'bold',
+  },
+  statsModalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: COLORS.slate900,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  statsCard: {
+    backgroundColor: COLORS.slate50,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statRowLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.slate600,
+  },
+  statRowValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.slate900,
+  },
+  warningValue: {
+    color: '#DC2626',
+  },
+  successValue: {
+    color: COLORS.primary,
+  },
+  statDivider: {
+    height: 1,
+    backgroundColor: COLORS.slate200,
+    marginVertical: 12,
+  },
+  warningMessage: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warningMessageText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+    lineHeight: 18,
+  },
+  statsCloseModalButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  statsCloseModalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.white,
   },
 });
