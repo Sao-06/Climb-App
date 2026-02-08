@@ -47,6 +47,28 @@ export const setFocusModeEnabled = async (enabled: boolean): Promise<void> => {
   }
 };
 
+// simple listener support for UI updates
+type FocusModeListener = (enabled: boolean) => void;
+const focusModeListeners: Set<FocusModeListener> = new Set();
+
+export const addFocusModeListener = (fn: FocusModeListener) => {
+  focusModeListeners.add(fn);
+  return () => focusModeListeners.delete(fn);
+};
+
+const notifyFocusModeListeners = (enabled: boolean) => {
+  focusModeListeners.forEach(fn => {
+    try { fn(enabled); } catch (e) { /* ignore listener errors */ }
+  });
+};
+
+// call listeners when setting
+const originalSetFocusModeEnabled = setFocusModeEnabled;
+export const _setFocusModeEnabledAndNotify = async (enabled: boolean) => {
+  await originalSetFocusModeEnabled(enabled);
+  notifyFocusModeListeners(enabled);
+};
+
 let sessionState: FocusSessionState = {
   isActive: false,
   currentSession: null,
