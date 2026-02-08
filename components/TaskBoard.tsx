@@ -61,7 +61,6 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
             if (s.id === subtaskId) {
               if (!s.completed) {
                 onPointsChange(s.points);
-                // Show XP popup and notification
                 setXpPopup({ visible: true, amount: s.points });
                 sendXPEarnedNotification(s.points);
               }

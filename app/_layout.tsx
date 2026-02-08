@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import GlobalFocusIndicator from '@/components/GlobalFocusIndicator';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -19,7 +18,6 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
-      <GlobalFocusIndicator />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

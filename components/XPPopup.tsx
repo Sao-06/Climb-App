@@ -15,14 +15,12 @@ const XPPopup: React.FC<XPPopupProps> = ({ amount, visible, onComplete }) => {
 
   useEffect(() => {
     if (!visible) {
-      // Reset values
       translateY.setValue(0);
       opacity.setValue(1);
       scale.setValue(1);
       return;
     }
 
-    // Animate the popup
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: -100,
