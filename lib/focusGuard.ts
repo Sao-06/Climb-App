@@ -54,6 +54,35 @@ const writeFlags = async (key: string, flags: DailyFlags): Promise<void> => {
   await AsyncStorage.setItem(key, JSON.stringify(flags));
 };
 
+export async function resetDailyUsage(appName: string): Promise<void> {
+  const normalized = normalizeAppName(appName);
+  const usage = await readUsageMap();
+  if (usage[normalized] !== undefined) {
+    delete usage[normalized];
+    await writeUsageMap(usage);
+  }
+}
+
+export async function resetDailyFlags(appName: string): Promise<void> {
+  const normalized = normalizeAppName(appName);
+  const nudgeFlags = await readFlags(getNudgeKey());
+  if (nudgeFlags[normalized]) {
+    delete nudgeFlags[normalized];
+    await writeFlags(getNudgeKey(), nudgeFlags);
+  }
+
+  const penaltyFlags = await readFlags(getPenaltyKey());
+  if (penaltyFlags[normalized]) {
+    delete penaltyFlags[normalized];
+    await writeFlags(getPenaltyKey(), penaltyFlags);
+  }
+}
+
+export async function resetDailyState(appName: string): Promise<void> {
+  await resetDailyUsage(appName);
+  await resetDailyFlags(appName);
+}
+
 export async function recordAppUsage(appName: string, millis: number): Promise<void> {
   if (millis <= 0) return;
   const normalized = normalizeAppName(appName);

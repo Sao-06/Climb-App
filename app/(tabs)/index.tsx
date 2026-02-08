@@ -1,20 +1,23 @@
 import { Dashboard } from '@/components/Dashboard';
+import { getActiveBlockedApps } from '@/lib/appBlockerService';
 import { COLORS } from '@/lib/constants';
+import { subscribeDemoUsage } from '@/lib/demoEvents';
 import {
-  DEFAULT_SOCIAL_APP,
-  SOCIAL_PENALTY_POINTS,
-  applyDailyPenaltyIfNeeded,
-  getAppLimitMinutes,
-  getAppUsageMinutes,
-  isLimitExceeded,
-  markNudgeShown,
-  recordAppUsage,
-  wasNudgeShown
+    DEFAULT_SOCIAL_APP,
+    SOCIAL_PENALTY_POINTS,
+    applyDailyPenaltyIfNeeded,
+    getAppLimitMinutes,
+    getAppUsageMinutes,
+    isLimitExceeded,
+    markNudgeShown,
+    recordAppUsage,
+    wasNudgeShown
 } from '@/lib/focusGuard';
 import {
-  clearFocusShield,
-  getExternalAppUsageSnapshot,
-  requestFocusShield
+    clearFocusShield,
+    getExternalAppUsageSnapshot,
+    requestFocusShield,
+    startBreakEnforcement
 } from '@/lib/nativeScreenTime';
 import { CharacterType, Task, UserProfile } from '@/lib/types';
 import React, { useEffect, useRef, useState } from 'react';
@@ -35,6 +38,10 @@ export default function HomeScreen() {
   const [showFocusNudge, setShowFocusNudge] = useState(false);
   const [focusRequest, setFocusRequest] = useState<{ presetId: string; token: number } | null>(null);
   const [instagramMinutes, setInstagramMinutes] = useState(0);
+  const [usageMinutes, setUsageMinutes] = useState(0);
+  const [blockedAppNames, setBlockedAppNames] = useState<string[]>([]);
+  const [focusBypassActive, setFocusBypassActive] = useState(false);
+  const bypassTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [user, setUser] = useState<UserProfile>({
     name: 'Explorer',
@@ -55,6 +62,31 @@ export default function HomeScreen() {
   const distractionStartTime = useRef<number | null>(null);
   const backgroundStartTime = useRef<number | null>(null);
 
+  const applyLimitEnforcement = async (appName: string, force: boolean) => {
+    const minutesUsed = await getAppUsageMinutes(appName);
+    const exceeded = await isLimitExceeded(appName);
+    if (!exceeded || isFocusSessionActive) return;
+
+    const nudged = await wasNudgeShown(appName);
+    if (!force && nudged) return;
+
+    const penalty = await applyDailyPenaltyIfNeeded(appName, SOCIAL_PENALTY_POINTS);
+    if (penalty.applied && penalty.pointsLost > 0) {
+      updatePoints(-penalty.pointsLost);
+    }
+    setInstagramMinutes(minutesUsed);
+    setFocusRequest({ presetId: 'classic', token: Date.now() });
+    setShowFocusNudge(true);
+    if (!force) {
+      await markNudgeShown(appName);
+    }
+  };
+
+  const refreshUsageMinutes = async () => {
+    const minutes = await getAppUsageMinutes(DEFAULT_SOCIAL_APP);
+    setUsageMinutes(minutes);
+  };
+
   // Monitor app state for distractions
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -65,12 +97,59 @@ export default function HomeScreen() {
   }, [isFocusSessionActive, isDistracted]);
 
   useEffect(() => {
-    if (isFocusSessionActive) {
-      void requestFocusShield([DEFAULT_SOCIAL_APP]);
-    } else {
-      void clearFocusShield();
-    }
+    void refreshUsageMinutes();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (bypassTimerRef.current) {
+        clearTimeout(bypassTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeDemoUsage(async payload => {
+      if (!payload.minutes || payload.minutes <= 0) return;
+      await recordAppUsage(payload.appName, payload.minutes * 60000);
+      await applyLimitEnforcement(payload.appName, true);
+      await refreshUsageMinutes();
+    });
+
+    return () => unsubscribe();
   }, [isFocusSessionActive]);
+
+  useEffect(() => {
+    const syncFocusShield = async () => {
+      if (isFocusSessionActive) {
+        const blockedApps = await getActiveBlockedApps();
+        const packages = blockedApps.map(app => app.packageName);
+        const names = blockedApps.map(app => app.name);
+        setBlockedAppNames(names);
+        if (packages.length === 0) {
+          await clearFocusShield();
+          return;
+        }
+        await requestFocusShield(packages, undefined, true, names);
+      } else {
+        setBlockedAppNames([]);
+        await clearFocusShield();
+      }
+    };
+
+    void syncFocusShield();
+  }, [isFocusSessionActive]);
+
+  useEffect(() => {
+    const startNativeBreakEnforcement = async () => {
+      const blockedApps = await getActiveBlockedApps();
+      const packages = blockedApps.map(app => app.packageName);
+      if (packages.length === 0) return;
+      await startBreakEnforcement(packages, getAppLimitMinutes(DEFAULT_SOCIAL_APP));
+    };
+
+    void startNativeBreakEnforcement();
+  }, []);
 
   const handleAppStateChange = async (nextAppState: AppStateStatus) => {
     if (
@@ -92,24 +171,9 @@ export default function HomeScreen() {
         await recordAppUsage(DEFAULT_SOCIAL_APP, backgroundMillis);
       }
 
-      const minutesUsed = await getAppUsageMinutes(DEFAULT_SOCIAL_APP);
-      const exceeded = await isLimitExceeded(DEFAULT_SOCIAL_APP);
+      await refreshUsageMinutes();
 
-      if (exceeded && !isFocusSessionActive) {
-        const nudged = await wasNudgeShown(DEFAULT_SOCIAL_APP);
-        if (!nudged) {
-          const penalty = await applyDailyPenaltyIfNeeded(
-            DEFAULT_SOCIAL_APP,
-            SOCIAL_PENALTY_POINTS
-          );
-          if (penalty.applied && penalty.pointsLost > 0) {
-            updatePoints(-penalty.pointsLost);
-          }
-          setInstagramMinutes(minutesUsed);
-          setShowFocusNudge(true);
-          await markNudgeShown(DEFAULT_SOCIAL_APP);
-        }
-      }
+      await applyLimitEnforcement(DEFAULT_SOCIAL_APP, false);
 
       if (isFocusSessionActive && isDistracted) {
         const elapsedMinutes = Math.floor(
@@ -130,6 +194,7 @@ export default function HomeScreen() {
 
     appState.current = nextAppState;
   };
+
 
   // Check and update level based on points
   useEffect(() => {
@@ -168,7 +233,17 @@ export default function HomeScreen() {
 
   const handleFocusRedirect = () => {
     setShowFocusNudge(false);
-    setFocusRequest({ presetId: 'classic', token: Date.now() });
+  };
+
+  const activateEmergencyBypass = () => {
+    if (bypassTimerRef.current) {
+      clearTimeout(bypassTimerRef.current);
+    }
+    setFocusBypassActive(true);
+    updatePoints(-50);
+    bypassTimerRef.current = setTimeout(() => {
+      setFocusBypassActive(false);
+    }, 2 * 60 * 1000);
   };
 
   return (
@@ -180,6 +255,8 @@ export default function HomeScreen() {
         onSessionStateChange={setIsFocusSessionActive}
         focusRequest={focusRequest}
         onFocusRequestHandled={() => setFocusRequest(null)}
+        usageMinutes={usageMinutes}
+        usageLimitMinutes={getAppLimitMinutes(DEFAULT_SOCIAL_APP)}
       />
 
       <Modal
@@ -196,20 +273,42 @@ export default function HomeScreen() {
               The daily limit is {getAppLimitMinutes(DEFAULT_SOCIAL_APP)} min.
             </Text>
             <Text style={styles.modalText}>
-              Want to jump into a focus session and protect your streak?
+              Focus mode was activated to protect your streak.
             </Text>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setShowFocusNudge(false)}
-                style={styles.modalButtonSecondary}
-              >
-                <Text style={styles.modalButtonSecondaryText}>Not now</Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleFocusRedirect}
                 style={styles.modalButtonPrimary}
               >
-                <Text style={styles.modalButtonPrimaryText}>Start focus</Text>
+                <Text style={styles.modalButtonPrimaryText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isFocusSessionActive && !focusBypassActive}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.shieldOverlay}>
+          <View style={styles.shieldCard}>
+            <Text style={styles.shieldTitle}>Focus Shield Active</Text>
+            <Text style={styles.shieldText}>
+              Distracting apps are blocked while you climb.
+            </Text>
+            {blockedAppNames.length > 0 && (
+              <Text style={styles.shieldList}>
+                Blocked: {blockedAppNames.join(', ')}
+              </Text>
+            )}
+            <View style={styles.shieldActions}>
+              <TouchableOpacity
+                onPress={activateEmergencyBypass}
+                style={styles.shieldBypassButton}
+              >
+                <Text style={styles.shieldBypassText}>Emergency bypass (-50 XP)</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -283,5 +382,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: COLORS.white,
+  },
+  shieldOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  shieldCard: {
+    width: '100%',
+    backgroundColor: COLORS.slate900,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.slate700,
+  },
+  shieldTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: COLORS.white,
+    marginBottom: 8,
+  },
+  shieldText: {
+    fontSize: 13,
+    color: COLORS.slate200,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  shieldList: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontWeight: '700',
+  },
+  shieldActions: {
+    marginTop: 16,
+  },
+  shieldBypassButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.danger,
+    alignItems: 'center',
+  },
+  shieldBypassText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

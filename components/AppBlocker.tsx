@@ -1,41 +1,76 @@
+import {
+    addCustomBlockedApp,
+    getBlockerConfig,
+    removeBlockedApp,
+    toggleAppBlock,
+    toggleAppBlocker,
+    toggleBlockOnPomodoroStart,
+} from '@/lib/appBlockerService';
+import { COLORS } from '@/lib/constants';
+import { emitDemoUsage } from '@/lib/demoEvents';
+import {
+    DEFAULT_SOCIAL_APP,
+    getAppLimitMinutes,
+    getAppUsageMinutes,
+    resetDailyState
+} from '@/lib/focusGuard';
+import {
+    isNativeScreenTimeAvailable,
+    openScreenTimeSettings,
+    requestScreenTimePermissions
+} from '@/lib/nativeScreenTime';
+import { AppBlockerConfig, BlockedApp } from '@/lib/types';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Modal,
-  TextInput,
-  FlatList,
-  Alert,
+    Alert,
+    FlatList,
+    Modal,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { COLORS } from '@/lib/constants';
-import {
-  getBlockerConfig,
-  toggleAppBlocker,
-  toggleBlockOnPomodoroStart,
-  toggleAppBlock,
-  addCustomBlockedApp,
-  removeBlockedApp,
-} from '@/lib/appBlockerService';
-import { BlockedApp, AppBlockerConfig } from '@/lib/types';
 
 interface AppBlockerProps {
   onConfigChange?: (config: AppBlockerConfig) => void;
 }
 
 export const AppBlocker: React.FC<AppBlockerProps> = ({ onConfigChange }) => {
+  const router = useRouter();
   const [config, setConfig] = useState<AppBlockerConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAppName, setNewAppName] = useState('');
   const [newAppPackage, setNewAppPackage] = useState('');
   const [newAppCategory, setNewAppCategory] = useState<'social' | 'games' | 'entertainment' | 'communication' | 'other'>('other');
+  const [nativeAvailable, setNativeAvailable] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(null);
+  const [missingPermissions, setMissingPermissions] = useState<string[]>([]);
+  const [demoUsageMinutes, setDemoUsageMinutes] = useState(0);
 
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  useEffect(() => {
+    const checkNative = async () => {
+      const available = await isNativeScreenTimeAvailable();
+      setNativeAvailable(available);
+    };
+
+    void checkNative();
+  }, []);
+
+  useEffect(() => {
+    const loadUsage = async () => {
+      const minutes = await getAppUsageMinutes(DEFAULT_SOCIAL_APP);
+      setDemoUsageMinutes(minutes);
+    };
+
+    void loadUsage();
   }, []);
 
   useEffect(() => {
@@ -129,6 +164,39 @@ export const AppBlocker: React.FC<AppBlockerProps> = ({ onConfigChange }) => {
     );
   };
 
+  const handleRequestPermissions = async () => {
+    try {
+      const status = await requestScreenTimePermissions();
+      setPermissionsGranted(status.granted);
+      setMissingPermissions(status.missing || []);
+      if (!status.granted) {
+        Alert.alert(
+          'Permissions Needed',
+          'Enable Usage Access and Accessibility to block apps during focus.'
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to request permissions');
+    }
+  };
+
+  const refreshDemoUsage = async () => {
+    const minutes = await getAppUsageMinutes(DEFAULT_SOCIAL_APP);
+    setDemoUsageMinutes(minutes);
+  };
+
+  const handleSimulateUsage = (minutes: number) => {
+    emitDemoUsage(DEFAULT_SOCIAL_APP, minutes, 'settings-demo');
+    setTimeout(() => {
+      void refreshDemoUsage();
+    }, 200);
+  };
+
+  const handleResetDemo = async () => {
+    await resetDailyState(DEFAULT_SOCIAL_APP);
+    await refreshDemoUsage();
+  };
+
   if (loading || !config) {
     return <Text style={styles.loadingText}>Loading...</Text>;
   }
@@ -183,6 +251,71 @@ export const AppBlocker: React.FC<AppBlockerProps> = ({ onConfigChange }) => {
             trackColor={{ false: COLORS.slate300, true: COLORS.secondary }}
             thumbColor={config.blockOnPomodoroStart ? COLORS.white : COLORS.slate400}
           />
+        </View>
+      </View>
+
+      {/* System Permissions */}
+      <View style={styles.permissionCard}>
+        <View style={styles.permissionHeader}>
+          <Text style={styles.cardTitle}>System Permissions</Text>
+          <Text style={styles.cardDesc}>
+            {nativeAvailable
+              ? 'Native blocker available on this build.'
+              : 'Requires custom dev build (Expo Go cannot block apps).'}
+          </Text>
+          {permissionsGranted === false && missingPermissions.length > 0 && (
+            <Text style={styles.permissionHint}>
+              Missing: {missingPermissions.join(', ')}
+            </Text>
+          )}
+        </View>
+        <View style={styles.permissionActions}>
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={handleRequestPermissions}
+          >
+            <Text style={styles.permissionButtonText}>Request Access</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.permissionButtonSecondary}
+            onPress={openScreenTimeSettings}
+          >
+            <Text style={styles.permissionButtonSecondaryText}>Open Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Demo Mode */}
+      <View style={styles.demoCard}>
+        <Text style={styles.cardTitle}>Demo Mode</Text>
+        <Text style={styles.cardDesc}>
+          Instagram today: {demoUsageMinutes} min / {getAppLimitMinutes(DEFAULT_SOCIAL_APP)} min
+        </Text>
+        <View style={styles.demoActions}>
+          <TouchableOpacity
+            style={styles.demoButton}
+            onPress={() => handleSimulateUsage(5)}
+          >
+            <Text style={styles.demoButtonText}>Simulate 5 min</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.demoButtonDanger}
+            onPress={() => handleSimulateUsage(12)}
+          >
+            <Text style={styles.demoButtonText}>Simulate 12 min</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.demoButtonGhost}
+            onPress={() => router.push('/instagram-demo')}
+          >
+            <Text style={styles.demoButtonGhostText}>Open Instagram Demo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.demoButtonGhost}
+            onPress={handleResetDemo}
+          >
+            <Text style={styles.demoButtonGhostText}>Reset Demo</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -347,6 +480,92 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.slate100,
+  },
+  permissionCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.slate100,
+  },
+  permissionHeader: {
+    marginBottom: 10,
+  },
+  permissionHint: {
+    marginTop: 6,
+    color: COLORS.danger,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  permissionActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  permissionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+  },
+  permissionButtonText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  permissionButtonSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.slate100,
+    borderRadius: 10,
+  },
+  permissionButtonSecondaryText: {
+    color: COLORS.slate700,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  demoCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.slate100,
+  },
+  demoActions: {
+    marginTop: 10,
+    gap: 10,
+  },
+  demoButton: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+  },
+  demoButtonDanger: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.danger,
+    alignItems: 'center',
+  },
+  demoButtonGhost: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.slate200,
+    alignItems: 'center',
+  },
+  demoButtonText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  demoButtonGhostText: {
+    color: COLORS.slate700,
+    fontSize: 12,
+    fontWeight: '700',
   },
   toggleContent: {
     flexDirection: 'row',

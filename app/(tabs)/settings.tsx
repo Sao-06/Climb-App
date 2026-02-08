@@ -1,7 +1,7 @@
+import { AppBlocker } from '@/components/AppBlocker';
 import { CharacterSelect } from '@/components/CharacterSelect';
-import AppBlocker from '@/components/AppBlocker';
-import { isFocusModeEnabled, _setFocusModeEnabledAndNotify } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
+import { _setFocusModeEnabledAndNotify, isFocusModeEnabled } from '@/lib/focusModeService';
 import { CharacterType } from '@/lib/types';
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';

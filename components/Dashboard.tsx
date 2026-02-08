@@ -14,18 +14,18 @@ import { initializeNotifications } from '@/lib/notificationService';
 import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  AppState,
-  AppStateStatus,
-  Dimensions,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    AppState,
+    AppStateStatus,
+    Dimensions,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface DashboardProps {
@@ -35,6 +35,8 @@ interface DashboardProps {
   onSessionStateChange?: (isActive: boolean) => void;
   focusRequest?: { presetId: string; token: number } | null;
   onFocusRequestHandled?: () => void;
+  usageMinutes?: number;
+  usageLimitMinutes?: number;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -45,7 +47,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onHeightChange,
   onSessionStateChange,
   focusRequest,
-  onFocusRequestHandled
+  onFocusRequestHandled,
+  usageMinutes,
+  usageLimitMinutes
 }) => {
   const [activeTimer, setActiveTimer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -315,6 +319,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </View>
         </View>
 
+        {usageMinutes !== undefined && usageLimitMinutes !== undefined && (
+          <View style={styles.usageCard}>
+            <Text style={styles.usageTitle}>Social Time Today</Text>
+            <Text style={styles.usageValue}>
+              {usageMinutes} min / {usageLimitMinutes} min
+            </Text>
+            <Text style={styles.usageNote}>Demo tracking for focus guard</Text>
+          </View>
+        )}
+
         {/* Coach Advice */}
         <View style={styles.adviceBox}>
           <Text style={styles.adviceTitle}>Navigator's Feedback</Text>
@@ -562,6 +576,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 12,
+  },
+  usageCard: {
+    marginHorizontal: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.slate100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  usageTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.slate400,
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  usageValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.slate800,
+    marginBottom: 2,
+  },
+  usageNote: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.slate500,
   },
   statBox: {
     flex: 1,
