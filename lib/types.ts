@@ -20,9 +20,14 @@ export interface PomodoroPreset {
 export interface Task {
   id: string;
   title: string;
+  description?: string;
   subtasks: SubTask[];
   points: number;
   completed: boolean;
+  createdAt?: Date;
+  completedAt?: Date;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  estimatedMinutes?: number;
 }
 
 export interface SubTask {
@@ -30,6 +35,8 @@ export interface SubTask {
   title: string;
   points: number;
   completed: boolean;
+  estimatedMinutes?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export interface UserProfile {
