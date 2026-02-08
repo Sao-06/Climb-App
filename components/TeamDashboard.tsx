@@ -47,7 +47,6 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
 
   // Form state for creating team
   const [newTeamName, setNewTeamName] = useState('');
-  const [newTeamDesc, setNewTeamDesc] = useState('');
   const [newTeamIsPublic, setNewTeamIsPublic] = useState(true);
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerNickname, setOwnerNickname] = useState('');
@@ -82,11 +81,21 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
       return;
     }
 
+    if (!ownerNickname.trim()) {
+      Alert.alert('Error', 'Please enter your nickname');
+      return;
+    }
+
+    if (!ownerEmail.trim()) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+
     try {
       const team = await createTeam(
         user,
         newTeamName,
-        newTeamDesc,
+        '',
         newTeamIsPublic,
         ownerEmail,
         ownerNickname,
@@ -94,7 +103,6 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
       );
       setUserTeams([...userTeams, team]);
       setNewTeamName('');
-      setNewTeamDesc('');
       setNewTeamIsPublic(true);
       setOwnerEmail('');
       setOwnerNickname('');
@@ -280,17 +288,6 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
               placeholderTextColor={COLORS.slate400}
             />
 
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Optional description"
-              value={newTeamDesc}
-              onChangeText={setNewTeamDesc}
-              multiline
-              numberOfLines={4}
-              placeholderTextColor={COLORS.slate400}
-            />
-
             <Text style={styles.label}>Team Type</Text>
             <View style={styles.toggleGroup}>
               <TouchableOpacity
@@ -333,19 +330,19 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
                 : '🔒 Require invite code to join'}
             </Text>
 
-            <Text style={styles.label}>Your Nickname</Text>
+            <Text style={styles.label}>Your Nickname (required)</Text>
             <TextInput
               style={styles.input}
-              placeholder="Optional display name"
+              placeholder="Enter your nickname"
               value={ownerNickname}
               onChangeText={setOwnerNickname}
               placeholderTextColor={COLORS.slate400}
             />
 
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Email (required)</Text>
             <TextInput
               style={styles.input}
-              placeholder="Optional email for team contact"
+              placeholder="Enter your email"
               value={ownerEmail}
               onChangeText={setOwnerEmail}
               keyboardType="email-address"

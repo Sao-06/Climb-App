@@ -57,6 +57,38 @@ export interface AppUsage {
   isProductive: boolean;
 }
 
+export interface DailyChecklistItem {
+  id: string;
+  title: string;
+  description?: string;
+  points: number;
+  completed: boolean;
+  createdAt: string;
+}
+
+export interface DailyChecklist {
+  dateKey: string;
+  items: DailyChecklistItem[];
+  pointsEarned: number;
+  syncWithTeam?: boolean;
+}
+
+export interface BlockedApp {
+  id: string;
+  packageName: string;
+  name: string;
+  category?: 'social' | 'games' | 'entertainment' | 'communication' | 'other';
+  icon?: string;
+  isBlocked: boolean;
+  addedAt?: string;
+}
+
+export interface AppBlockerConfig {
+  enabled: boolean;
+  blockOnPomodoroStart: boolean;
+  blockedApps: BlockedApp[];
+}
+
 // ============================================
 // Team-related Types
 // ============================================

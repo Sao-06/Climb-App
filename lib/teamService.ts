@@ -22,6 +22,27 @@ function generateId(): string {
 }
 
 /**
+ * Create a stable-ish member record. If a member with the same display name
+ * already exists, generate a unique userId to avoid join collisions when
+ * multiple devices use the default name (e.g., "Explorer").
+ */
+function buildMember(user: UserProfile, existingNames: string[]): TeamMember {
+  const baseName = user.name || 'Explorer';
+  const needsUniqueId = existingNames.includes(baseName);
+  const userId = needsUniqueId ? `${baseName}-${Math.random().toString(36).substr(2, 6)}` : baseName;
+
+  return {
+    userId,
+    name: baseName,
+    characterType: user.selectedCharacter,
+    joinedAt: new Date(),
+    role: 'member',
+    individualMissionProgress: 0,
+    pomodoroSessionsCompleted: 0,
+  };
+}
+
+/**
  * Generate a simple invite code (6 characters)
  */
 function generateInviteCode(): string {
@@ -176,19 +197,7 @@ export async function joinPublicTeam(user: UserProfile, teamId: string): Promise
       throw new Error('Team is full');
     }
 
-    if (team.members.some(m => m.userId === user.name)) {
-      throw new Error('Already a member of this team');
-    }
-
-    const newMember: TeamMember = {
-      userId: user.name,
-      name: user.name,
-      characterType: user.selectedCharacter,
-      joinedAt: new Date(),
-      role: 'member',
-      individualMissionProgress: 0,
-      pomodoroSessionsCompleted: 0,
-    };
+    const newMember = buildMember(user, team.members.map(m => m.name));
 
     team.members.push(newMember);
     team.updatedAt = new Date();
@@ -199,7 +208,7 @@ export async function joinPublicTeam(user: UserProfile, teamId: string): Promise
     await AsyncStorage.setItem(TEAM_STORAGE_KEYS.TEAMS, JSON.stringify(teams));
 
     // Add user-to-team mapping
-    await addUserToTeam(user.name, teamId);
+    await addUserToTeam(newMember.userId, teamId);
 
     return team;
   } catch (error) {
@@ -232,19 +241,7 @@ export async function joinPrivateTeamWithCode(
       throw new Error('Team is full');
     }
 
-    if (team.members.some(m => m.userId === user.name)) {
-      throw new Error('Already a member of this team');
-    }
-
-    const newMember: TeamMember = {
-      userId: user.name,
-      name: user.name,
-      characterType: user.selectedCharacter,
-      joinedAt: new Date(),
-      role: 'member',
-      individualMissionProgress: 0,
-      pomodoroSessionsCompleted: 0,
-    };
+    const newMember = buildMember(user, team.members.map(m => m.name));
 
     team.members.push(newMember);
     team.updatedAt = new Date();
@@ -255,7 +252,7 @@ export async function joinPrivateTeamWithCode(
     await AsyncStorage.setItem(TEAM_STORAGE_KEYS.TEAMS, JSON.stringify(teams));
 
     // Add user-to-team mapping
-    await addUserToTeam(user.name, team.id);
+    await addUserToTeam(newMember.userId, team.id);
 
     return team;
   } catch (error) {
@@ -284,19 +281,7 @@ export async function joinTeamWithAccessCode(
       throw new Error('Team is full');
     }
 
-    if (team.members.some(m => m.userId === user.name)) {
-      throw new Error('Already a member of this team');
-    }
-
-    const newMember: TeamMember = {
-      userId: user.name,
-      name: user.name,
-      characterType: user.selectedCharacter,
-      joinedAt: new Date(),
-      role: 'member',
-      individualMissionProgress: 0,
-      pomodoroSessionsCompleted: 0,
-    };
+    const newMember = buildMember(user, team.members.map(m => m.name));
 
     team.members.push(newMember);
     team.updatedAt = new Date();
@@ -307,7 +292,7 @@ export async function joinTeamWithAccessCode(
     await AsyncStorage.setItem(TEAM_STORAGE_KEYS.TEAMS, JSON.stringify(teams));
 
     // Add user-to-team mapping
-    await addUserToTeam(user.name, team.id);
+    await addUserToTeam(newMember.userId, team.id);
 
     return team;
   } catch (error) {

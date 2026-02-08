@@ -1,11 +1,11 @@
 import {
-    addCustomBlockedApp,
-    getBlockerConfig,
-    removeBlockedApp,
-    toggleAppBlock,
-    toggleAppBlocker,
-    toggleBlockOnPomodoroStart,
-} from '@/lib/appBlockerService';
+  addCustomBlockedApp,
+  getBlockerConfig,
+  removeBlockedApp,
+  toggleAppBlock,
+  toggleAppBlocker,
+  toggleBlockOnPomodoroStart,
+} from '../lib/appBlockerService';
 import { COLORS } from '@/lib/constants';
 import { emitDemoUsage } from '@/lib/demoEvents';
 import {

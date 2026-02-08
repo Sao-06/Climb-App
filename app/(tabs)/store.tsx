@@ -1,47 +1,47 @@
 import { Store } from '@/components/Store';
 import { COLORS } from '@/lib/constants';
 import { UserProfile } from '@/lib/types';
-import React, { useState } from 'react';
+import { useProfile } from '@/lib/profileContext';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 export default function StoreScreen() {
-  const [user, setUser] = useState<UserProfile>({
-    name: 'Explorer',
-    level: 1,
-    points: 150,
-    climbHeight: 0,
-    totalFocusTime: 0,
-    selectedCharacter: 'llama',
-    avatar: {
-      baseColor: '#e2e8f0',
-      hat: 'none',
-      gear: 'none',
-    },
-    isDistracted: false
-  });
+  const { profile, updateProfile } = useProfile();
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setUser(profile);
+    }
+  }, [profile]);
 
   const handleUpdateAvatar = (update: Partial<UserProfile['avatar']>) => {
-    setUser(prev => ({
-      ...prev,
-      avatar: { ...prev.avatar, ...update }
-    }));
+    if (!user) return;
+    const next = {
+      ...user,
+      avatar: { ...user.avatar, ...update },
+    };
+    setUser(next);
+    void updateProfile({ avatar: next.avatar });
   };
 
   const handleSpendPoints = (amount: number): boolean => {
-    if (user.points >= amount) {
-      setUser(prev => ({ ...prev, points: prev.points - amount }));
-      return true;
-    }
-    return false;
+    if (!user || user.points < amount) return false;
+    const next = { ...user, points: user.points - amount };
+    setUser(next);
+    void updateProfile({ points: next.points });
+    return true;
   };
 
   return (
     <View style={styles.container}>
-      <Store
-        user={user}
-        onUpdateAvatar={handleUpdateAvatar}
-        onSpendPoints={handleSpendPoints}
-      />
+      {user && (
+        <Store
+          user={user}
+          onUpdateAvatar={handleUpdateAvatar}
+          onSpendPoints={handleSpendPoints}
+        />
+      )}
     </View>
   );
 }

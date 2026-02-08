@@ -19,11 +19,15 @@ import {
     requestFocusShield,
     startBreakEnforcement
 } from '@/lib/nativeScreenTime';
+import { useProfile } from '@/lib/profileContext';
 import { CharacterType, Task, UserProfile } from '@/lib/types';
+import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     AppState,
     AppStateStatus,
+    ImageBackground,
     Modal,
     StyleSheet,
     Text,
@@ -31,7 +35,10 @@ import {
     View
 } from 'react-native';
 
+const backgroundImage = require('../../assets/images/backgroundofi.png');
+
 export default function HomeScreen() {
+  const { profile } = useProfile();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isDistracted, setIsDistracted] = useState(false);
   const [isFocusSessionActive, setIsFocusSessionActive] = useState(false);
@@ -42,6 +49,9 @@ export default function HomeScreen() {
   const [blockedAppNames, setBlockedAppNames] = useState<string[]>([]);
   const [focusBypassActive, setFocusBypassActive] = useState(false);
   const bypassTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alarmSoundRef = useRef<Audio.Sound | null>(null);
+  const alarmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioConfiguredRef = useRef(false);
 
   const [user, setUser] = useState<UserProfile>({
     name: 'Explorer',
@@ -57,6 +67,30 @@ export default function HomeScreen() {
     },
     isDistracted: false
   });
+
+  useEffect(() => {
+    if (profile) {
+      setUser(prev => ({
+        ...prev,
+        selectedCharacter: profile.selectedCharacter,
+        avatar: profile.avatar,
+        name: profile.name,
+      }));
+    }
+  }, [profile?.selectedCharacter, profile?.avatar, profile?.name]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (profile) {
+        setUser(prev => ({
+          ...prev,
+          selectedCharacter: profile.selectedCharacter,
+          avatar: profile.avatar,
+          name: profile.name,
+        }));
+      }
+    }, [profile?.selectedCharacter, profile?.avatar, profile?.name])
+  );
 
   const appState = useRef(AppState.currentState);
   const distractionStartTime = useRef<number | null>(null);
@@ -105,8 +139,87 @@ export default function HomeScreen() {
       if (bypassTimerRef.current) {
         clearTimeout(bypassTimerRef.current);
       }
+      void stopAlarm();
     };
   }, []);
+
+  const stopAlarm = async () => {
+    if (alarmTimeoutRef.current) {
+      clearTimeout(alarmTimeoutRef.current);
+      alarmTimeoutRef.current = null;
+    }
+
+    if (alarmSoundRef.current) {
+      try {
+        await alarmSoundRef.current.stopAsync();
+        await alarmSoundRef.current.unloadAsync();
+      } catch (error) {
+        console.warn('Failed to stop alarm sound', error);
+      } finally {
+        alarmSoundRef.current = null;
+      }
+    }
+  };
+
+  const startAlarm = async () => {
+    try {
+      if (!audioConfiguredRef.current) {
+        try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+            shouldDuckAndroid: true,
+            playThroughEarpieceAndroid: false,
+          });
+          audioConfiguredRef.current = true;
+        } catch (error) {
+          console.warn('Failed to configure audio mode', error);
+        }
+      }
+
+      await stopAlarm();
+
+      // Try primary alarm; fallback to a secondary URL if the first fails
+      const loadAlarm = async () => {
+        try {
+          return await Audio.Sound.createAsync(
+            { uri: 'https://d23dyxeqlo5psv.cloudfront.net/big_ben.mp3' },
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+        } catch (error) {
+          console.warn('Primary alarm failed, trying fallback', error);
+          return await Audio.Sound.createAsync(
+            { uri: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg' },
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+        }
+      };
+
+      const { sound } = await loadAlarm();
+
+      // Ensure playback starts even if shouldPlay was ignored
+      try {
+        await sound.playAsync();
+      } catch (error) {
+        console.warn('Failed to play alarm sound', error);
+      }
+
+      alarmSoundRef.current = sound;
+      alarmTimeoutRef.current = setTimeout(() => {
+        void stopAlarm();
+      }, 10000);
+    } catch (error) {
+      console.warn('Failed to start alarm sound', error);
+    }
+  };
+
+  useEffect(() => {
+    if (showFocusNudge) {
+      void startAlarm();
+    } else {
+      void stopAlarm();
+    }
+  }, [showFocusNudge]);
 
   useEffect(() => {
     const unsubscribe = subscribeDemoUsage(async payload => {
@@ -227,7 +340,7 @@ export default function HomeScreen() {
     }));
   };
 
-  const selectCharacter = (type: CharacterType) => {
+  const selectCharacter = async (type: CharacterType) => {
     setUser(prev => ({ ...prev, selectedCharacter: type }));
   };
 
@@ -247,81 +360,86 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Dashboard
-        user={user}
-        onPointsChange={updatePoints}
-        onHeightChange={updateHeight}
-        onSessionStateChange={setIsFocusSessionActive}
-        focusRequest={focusRequest}
-        onFocusRequestHandled={() => setFocusRequest(null)}
-        usageMinutes={usageMinutes}
-        usageLimitMinutes={getAppLimitMinutes(DEFAULT_SOCIAL_APP)}
-      />
+    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+      <View style={styles.container}>
+        <Dashboard
+          user={user}
+          onPointsChange={updatePoints}
+          onHeightChange={updateHeight}
+          onSessionStateChange={setIsFocusSessionActive}
+          focusRequest={focusRequest}
+          onFocusRequestHandled={() => setFocusRequest(null)}
+          usageMinutes={usageMinutes}
+          usageLimitMinutes={getAppLimitMinutes(DEFAULT_SOCIAL_APP)}
+        />
 
-      <Modal
-        visible={showFocusNudge}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFocusNudge(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Time to Refocus</Text>
-            <Text style={styles.modalText}>
-              You've hit {instagramMinutes} min on Instagram today.
-              The daily limit is {getAppLimitMinutes(DEFAULT_SOCIAL_APP)} min.
-            </Text>
-            <Text style={styles.modalText}>
-              Focus mode was activated to protect your streak.
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={handleFocusRedirect}
-                style={styles.modalButtonPrimary}
-              >
-                <Text style={styles.modalButtonPrimaryText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={isFocusSessionActive && !focusBypassActive}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.shieldOverlay}>
-          <View style={styles.shieldCard}>
-            <Text style={styles.shieldTitle}>Focus Shield Active</Text>
-            <Text style={styles.shieldText}>
-              Distracting apps are blocked while you climb.
-            </Text>
-            {blockedAppNames.length > 0 && (
-              <Text style={styles.shieldList}>
-                Blocked: {blockedAppNames.join(', ')}
+        <Modal
+          visible={showFocusNudge}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowFocusNudge(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Time to Refocus</Text>
+              <Text style={styles.modalText}>
+                You&apos;ve hit {instagramMinutes} min on Instagram today.
+                The daily limit is {getAppLimitMinutes(DEFAULT_SOCIAL_APP)} min.
               </Text>
-            )}
-            <View style={styles.shieldActions}>
-              <TouchableOpacity
-                onPress={activateEmergencyBypass}
-                style={styles.shieldBypassButton}
-              >
-                <Text style={styles.shieldBypassText}>Emergency bypass (-50 XP)</Text>
-              </TouchableOpacity>
+              <Text style={styles.modalText}>
+                Focus mode was activated to protect your streak.
+              </Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  onPress={handleFocusRedirect}
+                  style={styles.modalButtonPrimary}
+                >
+                  <Text style={styles.modalButtonPrimaryText}>OK</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+
+        <Modal
+          visible={isFocusSessionActive && !focusBypassActive}
+          transparent
+          animationType="fade"
+        >
+          <View style={styles.shieldOverlay}>
+            <View style={styles.shieldCard}>
+              <Text style={styles.shieldTitle}>Focus Shield Active</Text>
+              <Text style={styles.shieldText}>
+                Distracting apps are blocked while you climb.
+              </Text>
+              {blockedAppNames.length > 0 && (
+                <Text style={styles.shieldList}>
+                  Blocked: {blockedAppNames.join(', ')}
+                </Text>
+              )}
+              <View style={styles.shieldActions}>
+                <TouchableOpacity
+                  onPress={activateEmergencyBypass}
+                  style={styles.shieldBypassButton}
+                >
+                  <Text style={styles.shieldBypassText}>Emergency bypass (-50 XP)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: COLORS.slate50,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   modalOverlay: {
     flex: 1,

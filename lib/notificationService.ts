@@ -87,3 +87,28 @@ export async function sendXPEarnedNotification(amount: number): Promise<void> {
     console.error('Error sending XP notification:', error);
   }
 }
+
+export async function sendAppExitPenaltyNotification(pointsLost: number): Promise<void> {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Stay in the climb',
+        body: `-${pointsLost} pts for leaving the app. Jump back in!`,
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null,
+    });
+
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg' },
+      { shouldPlay: true, isLooping: true }
+    );
+
+    setTimeout(() => {
+      void sound.unloadAsync();
+    }, 10000);
+  } catch (error) {
+    console.error('Error sending app exit penalty notification:', error);
+  }
+}

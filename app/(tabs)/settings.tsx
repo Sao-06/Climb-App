@@ -1,26 +1,61 @@
-import { AppBlocker } from '@/components/AppBlocker';
 import { CharacterSelect } from '@/components/CharacterSelect';
 import { COLORS } from '@/lib/constants';
-import { _setFocusModeEnabledAndNotify, isFocusModeEnabled } from '@/lib/focusModeService';
 import { CharacterType } from '@/lib/types';
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useProfile } from '@/lib/profileContext';
+import React, { useEffect, useState } from 'react';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { startAppUsageTracker, stopAppUsageTracker } from '@/lib/appUsageTracker';
+import { getTrackerFocusConsent, setTrackerFocusConsent } from '@/lib/consentService';
+import { initializeNotifications } from '@/lib/notificationService';
+import { isFocusModeEnabled, setFocusModeEnabled } from '@/lib/focusModeService';
 
 export default function SettingsScreen() {
+  const { profile, updateProfile } = useProfile();
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterType>('llama');
-  const [focusModeEnabled, setFocusModeEnabledState] = useState<boolean>(true);
-  const [showFocusHint, setShowFocusHint] = useState<boolean>(false);
+  const [trackerEnabled, setTrackerEnabled] = useState(false);
+  const [focusModeEnabled, setFocusModeEnabledState] = useState(false);
 
-  React.useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const enabled = await isFocusModeEnabled();
-        if (mounted) setFocusModeEnabledState(enabled);
-      } catch (e) {}
-    })();
-    return () => { mounted = false; };
-  }, []);
+  useEffect(() => {
+    const load = async () => {
+      if (profile) {
+        setSelectedCharacter(profile.selectedCharacter);
+      }
+      const consent = await getTrackerFocusConsent();
+      setTrackerEnabled(consent === 'granted');
+      setFocusModeEnabledState(isFocusModeEnabled());
+    };
+    void load();
+  }, [profile]);
+
+  const toggleTracker = async (value: boolean) => {
+    setTrackerEnabled(value);
+    if (value) {
+      await setTrackerFocusConsent('granted');
+      await initializeNotifications();
+      startAppUsageTracker();
+    } else {
+      await setTrackerFocusConsent('denied');
+      stopAppUsageTracker();
+    }
+  };
+
+  const toggleFocusMode = (value: boolean) => {
+    setFocusModeEnabledState(value);
+    setFocusModeEnabled(value);
+  };
+
+  const handleAppTracker = () => {
+    Alert.alert('App Tracker', 'App usage tracking is active. Leaving the app deducts points and triggers an alert.');
+  };
+
+  const handleFocusMode = () => {
+    Alert.alert('Focus Mode', 'Start a focus session from the Dashboard to enable focus protections and blocking.');
+  };
+
+  const handleSelectCharacter = async (type: CharacterType) => {
+    setSelectedCharacter(type);
+    await updateProfile({ selectedCharacter: type });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,42 +70,9 @@ export default function SettingsScreen() {
           </Text>
           <CharacterSelect
             selected={selectedCharacter}
-            onSelect={setSelectedCharacter}
+            onSelect={handleSelectCharacter}
           />
         </View>
-
-        <View style={styles.focusToggleCard}>
-          <View style={styles.focusToggleContent}>
-            <View>
-              <Text style={styles.focusToggleTitle}>Focus Mode</Text>
-              <Text style={styles.focusToggleDesc}>
-                When enabled, the app tracks if you leave during Pomodoro sessions and shows warnings.
-              </Text>
-            </View>
-            <View>
-              <Switch
-                value={focusModeEnabled}
-                onValueChange={async (v: boolean) => {
-                  setFocusModeEnabledState(v);
-                  try { 
-                    await _setFocusModeEnabledAndNotify(v);
-                    if (v) {
-                      setShowFocusHint(true);
-                      setTimeout(() => setShowFocusHint(false), 4000);
-                    }
-                  } catch (e) {}
-                }}
-                trackColor={{ false: COLORS.slate300, true: COLORS.secondary }}
-                thumbColor={focusModeEnabled ? COLORS.white : COLORS.slate400}
-              />
-            </View>
-          </View>
-        </View>
-        {showFocusHint && (
-          <View style={styles.focusHint}>
-            <Text style={styles.focusHintText}>Focus Mode enabled — you'll get warnings if you leave during a Pomodoro.</Text>
-          </View>
-        )}
 
         <View style={styles.infoSection}>
           <View style={styles.infoBox}>
@@ -79,8 +81,38 @@ export default function SettingsScreen() {
               • Use the Dashboard tab to track your climb and start focus sessions{'\n'}
               • Complete missions in the Missions tab to earn XP{'\n'}
               • Customize your character in the Basecamp shop{'\n'}
-              • When you go away during a focus session, you'll lose points
+              • When you go away during a focus session, you&apos;ll lose points
             </Text>
+          </View>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={[styles.actionButton, styles.primaryButton]} onPress={handleAppTracker}>
+              <Text style={styles.actionTitle}>App Tracker</Text>
+              <Text style={styles.actionSubtitle}>Track exits and apply penalties</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={handleFocusMode}>
+              <Text style={styles.actionTitle}>Focus Mode</Text>
+              <Text style={styles.actionSubtitle}>Jump to Dashboard to start</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toggleCard}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.infoTitle}>App Tracker</Text>
+                <Text style={styles.infoText}>Deduct points and alert when you leave the app.</Text>
+              </View>
+              <Switch value={trackerEnabled} onValueChange={toggleTracker} thumbColor={COLORS.primary} />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.infoTitle}>Focus Mode</Text>
+                <Text style={styles.infoText}>Allow focus protections to run during sessions.</Text>
+              </View>
+              <Switch value={focusModeEnabled} onValueChange={toggleFocusMode} thumbColor={COLORS.secondary} />
+            </View>
           </View>
 
           <View style={styles.tipsBox}>
@@ -92,10 +124,6 @@ export default function SettingsScreen() {
               • Stay focused - distractions have real consequences!
             </Text>
           </View>
-        </View>
-
-        <View style={styles.appBlockerSection}>
-          <AppBlocker />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -131,49 +159,68 @@ const styles = StyleSheet.create({
   infoSection: {
     gap: 12,
   },
-  appBlockerSection: {
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  toggleCard: {
     backgroundColor: COLORS.white,
     borderRadius: 16,
-    marginTop: 24,
-    marginBottom: 24,
-    overflow: 'hidden',
-  },
-  focusToggleCard: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: 0,
-    marginTop: 12,
-    borderRadius: 12,
-    padding: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.slate100,
+    borderColor: COLORS.slate200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  focusToggleContent: {
+  toggleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  focusToggleTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.slate800,
+  toggleTextBlock: {
+    flex: 1,
   },
-  focusToggleDesc: {
-    fontSize: 12,
-    color: COLORS.slate500,
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.slate200,
+    marginVertical: 12,
   },
-  focusHint: {
-    marginHorizontal: 0,
-    marginTop: 10,
-    backgroundColor: COLORS.slate50,
+  actionButton: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.slate200,
+    backgroundColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  primaryButton: {
     borderLeftWidth: 4,
     borderLeftColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 10,
   },
-  focusHintText: {
-    color: COLORS.slate700,
-    fontSize: 13,
-    fontWeight: '600',
+  secondaryButton: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.secondary,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.slate800,
+    marginBottom: 4,
+  },
+  actionSubtitle: {
+    fontSize: 12,
+    color: COLORS.slate500,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   infoBox: {
     backgroundColor: COLORS.white,

@@ -1,13 +1,14 @@
 import { Climber } from '@/components/Climber';
 import { COLORS, PRESETS } from '@/lib/constants';
+import { addAppExitListener, endFocusSession, startFocusSession } from '@/lib/focusModeService';
 import { getCoachAdvice } from '@/lib/geminiService';
 import { PomodoroPreset, UserProfile } from '@/lib/types';
 import { Audio } from 'expo-av';
-import { startFocusSession, endFocusSession, addAppExitListener } from '@/lib/focusModeService';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
+    ImageBackground,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -16,6 +17,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+
+const climberBackground = require('@/assets/images/backgroundofi.png');
 
 interface DashboardProps {
   user: UserProfile;
@@ -80,14 +83,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       // Create a simple alarm using Oscillator pattern simulation
       // For React Native, we'll use a different approach - play a beep tone
       const { sound } = await Audio.Sound.createAsync(
-        require('@/assets/sounds/alarm.mp3'),
-        { shouldPlay: true }
+        require('@/assets/sounds/alarm.mp3')
       ).catch(() => {
         // If alarm.mp3 doesn't exist, create a simple beep alternative
         return { sound: null };
       });
 
       soundRef.current = sound;
+
       if (sound) {
         await sound.playAsync();
         setTimeout(async () => {
@@ -198,55 +201,63 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Mountain Scene */}
         <View style={styles.mountainScene}>
-          <View style={styles.mountainBackground}>
-            <Text style={styles.peakLabel}>Peak Expedition • Target: 5000m</Text>
-          </View>
-
-          {/* Climber Animation */}
-          <Animated.View
-            style={[
-              styles.climberPosition,
-              {
-                bottom: Animated.add(
-                  climberPosition,
-                  new Animated.Value(20)
-                )
-              },
-              isMoving && styles.climberMoving
-            ]}
+          <ImageBackground
+            source={climberBackground}
+            resizeMode="cover"
+            style={styles.sceneImage}
+            imageStyle={styles.sceneImageRadius}
           >
-            <Climber
-              type={user.selectedCharacter}
-              avatar={user.avatar}
-              isMoving={isMoving}
-              size="md"
-            />
-            <View style={styles.nameLabel}>
-              <Text style={styles.nameLabelText}>
-                {user.name} • {user.climbHeight}m
-              </Text>
+            <View style={styles.mountainOverlay} />
+            <View style={styles.mountainBackground}>
+              <Text style={styles.peakLabel}>Peak Expedition • Target: 5000m</Text>
             </View>
-          </Animated.View>
 
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${mountainProgress}%` }
-                ]}
+            {/* Climber Animation */}
+            <Animated.View
+              style={[
+                styles.climberPosition,
+                {
+                  bottom: Animated.add(
+                    climberPosition,
+                    new Animated.Value(20)
+                  )
+                },
+                isMoving && styles.climberMoving
+              ]}
+            >
+              <Climber
+                type={user.selectedCharacter}
+                avatar={user.avatar}
+                isMoving={isMoving}
+                size="lg"
               />
+              <View style={styles.nameLabel}>
+                <Text style={styles.nameLabelText}>
+                  {user.name} • {user.climbHeight}m
+                </Text>
+              </View>
+            </Animated.View>
+
+            {/* Progress Bar */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${mountainProgress}%` }
+                  ]}
+                />
+              </View>
+              <View style={styles.progressLabels}>
+                <Text style={styles.progressLabel}>
+                  Current: {user.climbHeight}m
+                </Text>
+                <Text style={styles.progressLabel}>
+                  Next Peak: {Math.ceil((user.climbHeight + 1) / 1000) * 1000}m
+                </Text>
+              </View>
             </View>
-            <View style={styles.progressLabels}>
-              <Text style={styles.progressLabel}>
-                Current: {user.climbHeight}m
-              </Text>
-              <Text style={styles.progressLabel}>
-                Next Peak: {Math.ceil((user.climbHeight + 1) / 1000) * 1000}m
-              </Text>
-            </View>
-          </View>
+          </ImageBackground>
         </View>
 
         {/* Stats */}
@@ -267,8 +278,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Coach Advice */}
         <View style={styles.adviceBox}>
-          <Text style={styles.adviceTitle}>Navigator's Feedback</Text>
-          <Text style={styles.adviceText}>"{advice}"</Text>
+          <Text style={styles.adviceTitle}>Navigator&apos;s Feedback</Text>
+          <Text style={styles.adviceText}>{`"${advice}"`}</Text>
         </View>
 
         {/* Timer Section */}
@@ -349,12 +360,26 @@ const styles = StyleSheet.create({
   },
   mountainScene: {
     height: height * 0.5,
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: COLORS.slate800,
     justifyContent: 'flex-end',
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
     paddingBottom: 20,
+  },
+  sceneImage: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  sceneImageRadius: {
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  mountainOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   mountainBackground: {
     position: 'absolute',
@@ -362,6 +387,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+    zIndex: 2,
   },
   peakLabel: {
     color: COLORS.white,
