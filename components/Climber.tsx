@@ -1,3 +1,4 @@
+import { CHARACTERS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -14,23 +15,13 @@ interface ClimberProps {
 }
 
 const getCharacterImage = (type: CharacterType) => {
-  const images: Record<CharacterType, any> = {
-    llama: require('@/assets/images/lama.png'),
-    leopard: require('@/assets/images/jaguar.png'),
-    guineapig: require('@/assets/images/guinea pig.png'),
-    elephant: require('@/assets/images/elephant.png')
-  };
-  return images[type];
+  const character = CHARACTERS.find(c => c.id === type);
+  return character?.image || null;
 };
 
 const getEmoji = (type: CharacterType): string => {
-  const emojis: Record<CharacterType, string> = {
-    llama: '🦙',
-    leopard: '🐆',
-    guineapig: '🐹',
-    elephant: '🐘'
-  };
-  return emojis[type];
+  const character = CHARACTERS.find(c => c.id === type);
+  return character?.emoji || '🦙';
 };
 
 const getSizeStyle = (size: 'sm' | 'md' | 'lg' = 'md') => {
