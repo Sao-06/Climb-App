@@ -109,10 +109,32 @@ const handleAppStateChange = (state: AppStateStatus) => {
   if (!focusModeEnabled) return;
 
   if (state === 'background' || state === 'inactive') {
-    // User left the app
+    // User left the app - send notification immediately
     if (sessionState.currentSession) {
       sessionState.lastBackground = Date.now();
       sessionState.currentSession.exitCount += 1;
+
+      // Send notification warning immediately
+      const formatTime = (ms: number) => {
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+        return `${seconds}s`;
+      };
+
+      // Calculate total time away so far (from previous exits)
+      const previousTimeAway = sessionState.currentSession.appLeaveTimes.reduce(
+        (sum, leave) => sum + (leave.returnedAt - leave.leftAt),
+        0
+      );
+
+      sendFocusModeWarning(
+        sessionState.currentSession.exitCount,
+        sessionState.currentSession.presetName,
+        sessionState.currentSession.exitCount > 1 
+          ? formatTime(previousTimeAway) 
+          : 'You just left'
+      );
     }
   } else if (state === 'active') {
     // User returned to the app
@@ -123,24 +145,6 @@ const handleAppStateChange = (state: AppStateStatus) => {
         returnedAt: Date.now(),
       });
       sessionState.lastBackground = null;
-
-      // Send notification warning
-      const totalTimeAway = sessionState.currentSession.appLeaveTimes.reduce(
-        (sum, leave) => sum + (leave.returnedAt - leave.leftAt),
-        0
-      );
-      const formatTime = (ms: number) => {
-        const seconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(seconds / 60);
-        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-        return `${seconds}s`;
-      };
-
-      sendFocusModeWarning(
-        sessionState.currentSession.exitCount,
-        sessionState.currentSession.presetName,
-        formatTime(totalTimeAway)
-      );
     }
   }
 
