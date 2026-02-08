@@ -23,6 +23,30 @@ interface FocusSessionState {
 }
 
 const FOCUS_STORAGE_KEY = 'focus_sessions';
+const FOCUS_CONFIG_KEY = 'focus_mode_config';
+
+let focusModeEnabled = true; // default enabled
+
+export const isFocusModeEnabled = async (): Promise<boolean> => {
+  try {
+    const raw = await AsyncStorage.getItem(FOCUS_CONFIG_KEY);
+    if (!raw) return focusModeEnabled;
+    const cfg = JSON.parse(raw);
+    return !!cfg.enabled;
+  } catch (error) {
+    return focusModeEnabled;
+  }
+};
+
+export const setFocusModeEnabled = async (enabled: boolean): Promise<void> => {
+  try {
+    focusModeEnabled = enabled;
+    await AsyncStorage.setItem(FOCUS_CONFIG_KEY, JSON.stringify({ enabled }));
+  } catch (error) {
+    console.error('Error saving focus mode config:', error);
+  }
+};
+
 let sessionState: FocusSessionState = {
   isActive: false,
   currentSession: null,
@@ -42,6 +66,17 @@ export const initializeFocusMode = async () => {
       await AsyncStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify([]));
     }
 
+    // load config
+    try {
+      const cfgRaw = await AsyncStorage.getItem(FOCUS_CONFIG_KEY);
+      if (cfgRaw) {
+        const cfg = JSON.parse(cfgRaw);
+        focusModeEnabled = !!cfg.enabled;
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Set up app state listener
     if (!appStateSubscription) {
       appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
@@ -56,6 +91,7 @@ export const initializeFocusMode = async () => {
  */
 const handleAppStateChange = (state: AppStateStatus) => {
   if (!sessionState.isActive) return;
+  if (!focusModeEnabled) return;
 
   if (state === 'background' || state === 'inactive') {
     // User left the app

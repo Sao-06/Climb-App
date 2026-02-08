@@ -1,5 +1,6 @@
 import { CharacterSelect } from '@/components/CharacterSelect';
 import AppBlocker from '@/components/AppBlocker';
+import { isFocusModeEnabled, setFocusModeEnabled } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React, { useState } from 'react';
@@ -7,6 +8,18 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function SettingsScreen() {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterType>('llama');
+  const [focusModeEnabled, setFocusModeEnabledState] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const enabled = await isFocusModeEnabled();
+        if (mounted) setFocusModeEnabledState(enabled);
+      } catch (e) {}
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -23,6 +36,28 @@ export default function SettingsScreen() {
             selected={selectedCharacter}
             onSelect={setSelectedCharacter}
           />
+        </View>
+
+        <View style={styles.focusToggleCard}>
+          <View style={styles.focusToggleContent}>
+            <View>
+              <Text style={styles.focusToggleTitle}>Focus Mode</Text>
+              <Text style={styles.focusToggleDesc}>
+                When enabled, the app tracks if you leave during Pomodoro sessions and shows warnings.
+              </Text>
+            </View>
+            <View>
+              <Switch
+                value={focusModeEnabled}
+                onValueChange={async (v) => {
+                  setFocusModeEnabledState(v);
+                  try { await setFocusModeEnabled(v); } catch (e) {}
+                }}
+                trackColor={{ false: COLORS.slate300, true: COLORS.secondary }}
+                thumbColor={focusModeEnabled ? COLORS.white : COLORS.slate400}
+              />
+            </View>
+          </View>
         </View>
 
         <View style={styles.infoSection}>
@@ -90,6 +125,29 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 24,
     overflow: 'hidden',
+  },
+  focusToggleCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 0,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.slate100,
+  },
+  focusToggleContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  focusToggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.slate800,
+  },
+  focusToggleDesc: {
+    fontSize: 12,
+    color: COLORS.slate500,
   },
   infoBox: {
     backgroundColor: COLORS.white,
