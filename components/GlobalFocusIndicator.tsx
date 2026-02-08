@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, Easing, Modal, Pressable } from 'react-native';
-import { isFocusModeEnabled, addFocusModeListener } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
+import { addFocusModeListener, isFocusModeEnabled } from '@/lib/focusModeService';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 const GlobalFocusIndicator: React.FC = () => {
   const [enabled, setEnabled] = useState<boolean>(false);
@@ -61,9 +61,9 @@ const GlobalFocusIndicator: React.FC = () => {
     }
   }, [enabled, opacity, baseScale, pulseScale]);
 
-  if (!enabled) return null;
+  const combinedScale = Animated.multiply(baseScale, pulseScale) as Animated.AnimatedMultiplication; // type hint
 
-  const combinedScale = Animated.multiply(baseScale, pulseScale);
+  if (!enabled) return null;
 
   return (
     <View style={styles.wrapper}>
@@ -95,13 +95,13 @@ const GlobalFocusIndicator: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 10,
+    top: 30,
     right: 12,
     zIndex: 9999,
   },
   wrapper: {
     position: 'absolute',
-    top: 10,
+    top: 30,
     right: 12,
     zIndex: 9999,
   },

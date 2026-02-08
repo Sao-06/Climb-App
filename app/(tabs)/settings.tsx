@@ -29,7 +29,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Team Selection</Text>
+          <Text style={styles.sectionTitle}>Character Selection</Text>
           <Text style={styles.sectionDescription}>
             Choose your partner for the upcoming ascent. Each explorer brings their own spirit.
           </Text>

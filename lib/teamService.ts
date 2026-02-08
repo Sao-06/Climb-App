@@ -33,6 +33,11 @@ function generateInviteCode(): string {
   return code;
 }
 
+function normalizeCode(code?: string): string | undefined {
+  if (!code) return undefined;
+  return code.replace(/\s+/g, '').toUpperCase();
+}
+
 /**
  * Create a new team
  */
@@ -48,8 +53,8 @@ export async function createTeam(
 ): Promise<Team> {
   try {
     const teamId = generateId();
-    const inviteCode = isPublic ? undefined : generateInviteCode();
-    const finalAccessCode = accessCode || generateInviteCode(); // Generate if not provided
+    const finalAccessCode = normalizeCode(accessCode) || generateInviteCode();
+    const inviteCode = isPublic ? undefined : finalAccessCode;
 
     const ownerMember: TeamMember = {
       userId: owner.name, // Using name as userId (should be proper ID in production)
@@ -212,7 +217,8 @@ export async function joinPrivateTeamWithCode(
 ): Promise<Team | null> {
   try {
     const teams = await getAllTeams();
-    const team = teams.find(t => t.inviteCode === inviteCode);
+    const normalized = normalizeCode(inviteCode);
+    const team = teams.find(t => t.inviteCode === normalized || t.accessCode === normalized);
 
     if (!team) {
       throw new Error('Invalid invite code');
@@ -267,7 +273,8 @@ export async function joinTeamWithAccessCode(
 ): Promise<Team | null> {
   try {
     const teams = await getAllTeams();
-    const team = teams.find(t => t.accessCode === accessCode);
+    const normalized = normalizeCode(accessCode);
+    const team = teams.find(t => t.accessCode === normalized || t.inviteCode === normalized);
 
     if (!team) {
       throw new Error('Invalid access code');
