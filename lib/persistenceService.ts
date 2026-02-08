@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './asyncStorageMock';
 import { Task, UserProfile, SubTask } from './types';
 
 /**

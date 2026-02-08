@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './asyncStorageMock';
 
 /**
  * Analytics service to track AI performance and user insights
