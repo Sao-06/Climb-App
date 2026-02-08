@@ -1,4 +1,6 @@
 import * as Notifications from 'expo-notifications';
+import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
 /**
@@ -17,6 +19,61 @@ Notifications.setNotificationHandler({
 });
 
 let isInitialized = false;
+
+/**
+ * Play alarm sound for 10 seconds using vibration and system sounds
+ */
+async function playAlarmSound(): Promise<void> {
+  try {
+    // Set audio mode to allow sound to play even in silent mode
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: false,
+    });
+
+    // Play system notification sound multiple times for ~10 seconds
+    const alarmDuration = 10000; // 10 seconds
+    const startTime = Date.now();
+    const beepCount = 5;
+
+    for (let i = 0; i < beepCount; i++) {
+      if (Date.now() - startTime > alarmDuration) break;
+
+      try {
+        // Play haptic feedback (strong vibration)
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
+        // Try to play a system sound
+        try {
+          const { sound } = await Audio.Sound.createAsync({ 
+            uri: Platform.select({
+              ios: 'system_sound_id://1025', // Alarm sound on iOS
+              android: 'android.resource://com.android.systemui/raw/notification'
+            })
+          });
+          
+          await sound.playAsync();
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          await sound.unloadAsync();
+        } catch (soundError) {
+          // If system sound fails, continue with just haptics
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      } catch (error) {
+        // Silent failure if haptics not available
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+
+      // Delay between alarms
+      if (i < beepCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  } catch (error) {
+    console.error('Error playing alarm sound:', error);
+  }
+}
 
 /**
  * Request notification permissions and setup
@@ -65,6 +122,7 @@ export async function sendFocusModeWarning(
   timeAway: string
 ): Promise<void> {
   try {
+    // Send notification
     await Notifications.scheduleNotificationAsync({
       content: {
         title: '⚠️ Focus Mode Alert',
@@ -75,6 +133,9 @@ export async function sendFocusModeWarning(
       },
       trigger: null, // Show immediately
     });
+
+    // Play alarm sound for 10 seconds
+    await playAlarmSound();
   } catch (error) {
     console.error('Error sending notification:', error);
   }
