@@ -5,6 +5,7 @@ import {
     getUserTeams,
     joinPrivateTeamWithCode,
     joinPublicTeam,
+    joinTeamWithAccessCode,
 } from '@/lib/teamService';
 import { Team, UserProfile } from '@/lib/types';
 import React, { useEffect, useState } from 'react';
@@ -48,6 +49,9 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDesc, setNewTeamDesc] = useState('');
   const [newTeamIsPublic, setNewTeamIsPublic] = useState(true);
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerNickname, setOwnerNickname] = useState('');
+  const [accessCode, setAccessCode] = useState('');
 
   // Form state for joining private team
   const [inviteCode, setInviteCode] = useState('');
@@ -79,13 +83,24 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
     }
 
     try {
-      const team = await createTeam(user, newTeamName, newTeamDesc, newTeamIsPublic);
+      const team = await createTeam(
+        user,
+        newTeamName,
+        newTeamDesc,
+        newTeamIsPublic,
+        ownerEmail,
+        ownerNickname,
+        accessCode
+      );
       setUserTeams([...userTeams, team]);
       setNewTeamName('');
       setNewTeamDesc('');
       setNewTeamIsPublic(true);
+      setOwnerEmail('');
+      setOwnerNickname('');
+      setAccessCode('');
       setShowCreateModal(false);
-      Alert.alert('Success', `Team "${team.name}" created!`);
+      Alert.alert('Success', `Team "${team.name}" created!\n\nAccess Code: ${team.accessCode}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to create team');
       console.error(error);
@@ -108,20 +123,28 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
 
   const handleJoinWithCode = async () => {
     if (!inviteCode.trim()) {
-      Alert.alert('Error', 'Please enter an invite code');
+      Alert.alert('Error', 'Please enter an access code');
       return;
     }
 
     try {
-      const team = await joinPrivateTeamWithCode(user, inviteCode.toUpperCase());
+      // Try access code first, then fallback to invite code
+      let team = await joinTeamWithAccessCode(user, inviteCode.toUpperCase());
+      
+      if (!team) {
+        team = await joinPrivateTeamWithCode(user, inviteCode.toUpperCase());
+      }
+      
       if (team) {
         setUserTeams([...userTeams, team]);
         setInviteCode('');
         setShowJoinModal(false);
         Alert.alert('Success', `Joined "${team.name}"!`);
+      } else {
+        Alert.alert('Error', 'Invalid access code');
       }
     } catch (error) {
-      Alert.alert('Error', 'Invalid invite code or team is full');
+      Alert.alert('Error', 'Invalid access code or team is full');
       console.error(error);
     }
   };
@@ -310,6 +333,36 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
                 : '🔒 Require invite code to join'}
             </Text>
 
+            <Text style={styles.label}>Your Nickname</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Optional display name"
+              value={ownerNickname}
+              onChangeText={setOwnerNickname}
+              placeholderTextColor={COLORS.slate400}
+            />
+
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Optional email for team contact"
+              value={ownerEmail}
+              onChangeText={setOwnerEmail}
+              keyboardType="email-address"
+              placeholderTextColor={COLORS.slate400}
+            />
+
+            <Text style={styles.label}>Access Code</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Optional custom code (auto-generated if blank)"
+              value={accessCode}
+              onChangeText={setAccessCode}
+              maxLength={6}
+              autoCapitalize="characters"
+              placeholderTextColor={COLORS.slate400}
+            />
+
             <TouchableOpacity
               style={[styles.button, styles.primaryButton]}
               onPress={handleCreateTeam}
@@ -328,10 +381,10 @@ export const TeamDashboard: React.FC<TeamDashboardProps> = ({ user }) => {
               <Text style={styles.closeButtonText}>×</Text>
             </TouchableOpacity>
 
-            <Text style={styles.modalTitle}>Join Team with Code</Text>
-            <Text style={styles.modalDesc}>Enter the invite code from your team</Text>
+            <Text style={styles.modalTitle}>Join Team</Text>
+            <Text style={styles.modalDesc}>Enter the access code or invite code from your team</Text>
 
-            <Text style={styles.label}>Invite Code</Text>
+            <Text style={styles.label}>Access Code</Text>
             <TextInput
               style={styles.input}
               placeholder="E.g. ABC123"

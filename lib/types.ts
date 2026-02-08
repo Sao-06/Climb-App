@@ -68,6 +68,8 @@ export interface AppUsage {
 export interface TeamMember {
   userId: string;
   name: string;
+  nickname?: string; // Optional display name
+  email?: string; // Optional email
   characterType: CharacterType;
   joinedAt: Date;
   role: 'owner' | 'admin' | 'member';
@@ -98,6 +100,8 @@ export interface Team {
   name: string;
   description?: string;
   ownerId: string;
+  ownerEmail?: string; // Owner's email
+  accessCode?: string; // Team access code for joining
   members: TeamMember[];
   isPublic: boolean;
   inviteCode?: string; // required for private teams

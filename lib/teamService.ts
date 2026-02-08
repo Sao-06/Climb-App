@@ -41,15 +41,21 @@ export async function createTeam(
   teamName: string,
   description: string,
   isPublic: boolean,
+  ownerEmail?: string,
+  ownerNickname?: string,
+  accessCode?: string,
   maxMembers: number = 10
 ): Promise<Team> {
   try {
     const teamId = generateId();
     const inviteCode = isPublic ? undefined : generateInviteCode();
+    const finalAccessCode = accessCode || generateInviteCode(); // Generate if not provided
 
     const ownerMember: TeamMember = {
       userId: owner.name, // Using name as userId (should be proper ID in production)
       name: owner.name,
+      nickname: ownerNickname,
+      email: ownerEmail,
       characterType: owner.selectedCharacter,
       joinedAt: new Date(),
       role: 'owner',
@@ -62,6 +68,8 @@ export async function createTeam(
       name: teamName,
       description,
       ownerId: ownerMember.userId,
+      ownerEmail: ownerEmail,
+      accessCode: finalAccessCode,
       members: [ownerMember],
       isPublic,
       inviteCode,
@@ -246,6 +254,57 @@ export async function joinPrivateTeamWithCode(
     return team;
   } catch (error) {
     console.error('Error joining team with code:', error);
+    return null;
+  }
+}
+
+/**
+ * Join a team with access code (works for any team)
+ */
+export async function joinTeamWithAccessCode(
+  user: UserProfile,
+  accessCode: string
+): Promise<Team | null> {
+  try {
+    const teams = await getAllTeams();
+    const team = teams.find(t => t.accessCode === accessCode);
+
+    if (!team) {
+      throw new Error('Invalid access code');
+    }
+
+    if (team.members.length >= team.maxMembers) {
+      throw new Error('Team is full');
+    }
+
+    if (team.members.some(m => m.userId === user.name)) {
+      throw new Error('Already a member of this team');
+    }
+
+    const newMember: TeamMember = {
+      userId: user.name,
+      name: user.name,
+      characterType: user.selectedCharacter,
+      joinedAt: new Date(),
+      role: 'member',
+      individualMissionProgress: 0,
+      pomodoroSessionsCompleted: 0,
+    };
+
+    team.members.push(newMember);
+    team.updatedAt = new Date();
+
+    // Update storage
+    const teamIndex = teams.findIndex(t => t.id === team.id);
+    teams[teamIndex] = team;
+    await AsyncStorage.setItem(TEAM_STORAGE_KEYS.TEAMS, JSON.stringify(teams));
+
+    // Add user-to-team mapping
+    await addUserToTeam(user.name, team.id);
+
+    return team;
+  } catch (error) {
+    console.error('Error joining team with access code:', error);
     return null;
   }
 }
