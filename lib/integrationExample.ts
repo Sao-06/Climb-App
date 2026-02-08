@@ -25,6 +25,7 @@ import {
   calculateAIPerformanceMetrics,
   getAnalyticsSummary
 } from './analyticsService';
+import { missionGenerator, MissionInput, GeneratedMission } from './missionGenerator';
 import { Task, SubTask, UserProfile } from './types';
 
 /**
@@ -339,6 +340,56 @@ export class ClimbAppManager {
     } catch (error) {
       console.error('Error getting AI metrics:', error);
       return {};
+    }
+  }
+
+  /**
+   * Generate missions from user goals using AI
+   * 
+   * Example:
+   * ```
+   * const missions = await manager.generateMissionsFromGoal({
+   *   userGoal: 'Learn React Native',
+   *   category: 'learning',
+   *   difficulty: 'medium'
+   * });
+   * ```
+   */
+  async generateMissionsFromGoal(input: MissionInput): Promise<GeneratedMission[]> {
+    try {
+      const profile = await getUserProfile();
+      const missions = await missionGenerator.generateMissionsFromGoal({
+        ...input,
+        userProfile: profile
+      });
+
+      // Track mission generation
+      if (missions.length > 0) {
+        await trackTaskCreation(`Mission: ${input.userGoal}`, missions.length, Date.now());
+      }
+
+      return missions;
+    } catch (error) {
+      console.error('Error generating missions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recommended missions based on user profile
+   * 
+   * Example:
+   * ```
+   * const recommendations = await manager.getRecommendedMissions(['goal1', 'goal2']);
+   * ```
+   */
+  async getRecommendedMissions(userGoals: string[]): Promise<GeneratedMission[]> {
+    try {
+      const profile = await getUserProfile();
+      return await missionGenerator.getRecommendedMissions(userGoals, profile);
+    } catch (error) {
+      console.error('Error getting recommended missions:', error);
+      return [];
     }
   }
 
