@@ -14,19 +14,20 @@ import {
 import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    AppState,
-    AppStateStatus,
-    Dimensions,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  AppState,
+  AppStateStatus,
+  Dimensions,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { isFocusModeEnabled } from '@/lib/focusModeService';
 
 interface DashboardProps {
   user: UserProfile;
@@ -56,6 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showFocusWarning, setShowFocusWarning] = useState(false);
   const [showSessionStats, setShowSessionStats] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState<FocusSessionType | null>(null);
+  const [focusModeEnabled, setFocusModeEnabled] = useState<boolean>(true);
   
   const soundRef = useRef<Audio.Sound | null>(null);
   const prevHeight = useRef(user.climbHeight);
@@ -69,6 +71,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setAdvice(msg);
     };
     fetchAdvice();
+    // load focus mode status for indicator
+    (async () => {
+      try {
+        const enabled = await isFocusModeEnabled();
+        setFocusModeEnabled(enabled);
+      } catch (e) {
+        // ignore
+      }
+    })();
   }, [user.level]);
 
   useEffect(() => {
@@ -233,6 +244,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <View style={styles.mountainScene}>
           <View style={styles.mountainBackground}>
             <Text style={styles.peakLabel}>Peak Expedition • Target: 5000m</Text>
+            {focusModeEnabled && (
+              <View style={styles.focusBadge}>
+                <Text style={styles.focusBadgeText}>Focus Mode ON</Text>
+              </View>
+            )}
           </View>
 
           {/* Climber Animation */}
@@ -829,5 +845,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  focusBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    backgroundColor: 'rgba(15, 118, 110, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)'
+  },
+  focusBadgeText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: '800',
   },
 });
