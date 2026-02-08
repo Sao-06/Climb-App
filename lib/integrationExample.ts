@@ -194,9 +194,9 @@ export class ClimbAppManager {
         // Check if level up
         if (Math.floor(profile.points / 500) > profile.level - 1) {
           const achievement = `Reached Level ${profile.level}!`;
-          const message = await coachingSystem.generateAchievementMessage(
-            achievement,
-            profile.points % 500,
+          const message = await coachingSystem.getStreakMilestoneAdvice(
+            1,
+            profile.points,
             profile.level
           );
 
@@ -360,7 +360,7 @@ export class ClimbAppManager {
       const profile = await getUserProfile();
       const missions = await missionGenerator.generateMissionsFromGoal({
         ...input,
-        userProfile: profile
+        userProfile: profile || undefined
       });
 
       // Track mission generation

@@ -5,7 +5,7 @@
  * using OpenAI API for intelligent mission creation.
  */
 
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { Task, SubTask } from './types';
 
 export interface MissionInput {
@@ -30,13 +30,14 @@ export interface GeneratedMission {
 }
 
 class MissionGeneratorService {
-  private genAI: GoogleGenerativeAI;
+  private genAI: GoogleGenAI | null = null;
   private model: any;
 
   constructor() {
     const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    if (apiKey) {
+      this.genAI = new GoogleGenAI({ apiKey });
+    }
   }
 
   /**
@@ -44,10 +45,21 @@ class MissionGeneratorService {
    */
   async generateMissionsFromGoal(input: MissionInput): Promise<GeneratedMission[]> {
     try {
+      if (!this.genAI) {
+        return this.getDefaultMissions(input);
+      }
+
       const prompt = this.buildMissionPrompt(input);
       
-      const response = await this.model.generateContent(prompt);
-      const responseText = response.response.text();
+      const response = await this.genAI.models.generateContent({
+        model: 'gemini-pro',
+        contents: prompt,
+        generationConfig: {
+          responseMimeType: 'application/json',
+        }
+      });
+
+      const responseText = response.text || '';
       
       const missions = this.parseMissionResponse(responseText, input);
       return missions;

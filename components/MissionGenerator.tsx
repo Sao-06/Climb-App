@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   generateButton: {
-    backgroundColor: COLORS.blue500,
+    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -373,8 +373,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   optionButtonActive: {
-    backgroundColor: COLORS.blue500,
-    borderColor: COLORS.blue500,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   optionButtonText: {
     fontSize: 14,
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   submitButton: {
-    backgroundColor: COLORS.green500,
+    backgroundColor: COLORS.secondary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.blue500,
+    borderLeftColor: COLORS.primary,
   },
   missionTitle: {
     fontSize: 18,
@@ -422,14 +422,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   infoPill: {
-    backgroundColor: COLORS.blue100,
+    backgroundColor: '#dbeafe',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
   },
   infoPillText: {
     fontSize: 13,
-    color: COLORS.blue700,
+    color: '#1e40af',
     fontWeight: '500',
   },
   subtasksContainer: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.slate200,
   },
   selectMissionButton: {
-    backgroundColor: COLORS.green500,
+    backgroundColor: COLORS.secondary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

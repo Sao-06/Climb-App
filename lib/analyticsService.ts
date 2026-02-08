@@ -173,7 +173,7 @@ export async function calculateAIPerformanceMetrics(): Promise<AIPerformanceMetr
       taskBreakdownAccuracy: completionRate,
       coachAdviceRelevance: coachRelevance,
       taskCompletionRate: completionRate,
-      averageTimeToComplete,
+      averageTimeToComplete: avgTimeToComplete,
       userSatisfaction: avgRating
     };
   } catch (error) {
@@ -234,7 +234,7 @@ export async function getAnalyticsSummary(hoursBack: number = 24): Promise<{
     return {
       tasksCreated,
       tasksCompleted,
-      averageTaskPoints,
+      averageTaskPoints: avgTaskPoints,
       totalFocusTime,
       mostProductiveHour: parseInt(mostProductiveHour as any),
       coachMessagesSent: coachMessages,
