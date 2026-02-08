@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, Easing } from 'react-native';
+import { Animated, View, Text, StyleSheet, Easing, Modal, Pressable } from 'react-native';
 import { isFocusModeEnabled, addFocusModeListener } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
 
@@ -64,17 +64,43 @@ const GlobalFocusIndicator: React.FC = () => {
 
   const combinedScale = Animated.multiply(baseScale, pulseScale) as Animated.AnimatedMultiplication; // type hint
 
+  const [showTip, setShowTip] = useState(false);
+
   return (
-    <Animated.View pointerEvents="none" style={[styles.container, { opacity }]}>
-      <Animated.View style={[styles.badge, { transform: [{ scale: combinedScale }] }]}>
-        <Text style={styles.text}>Focus Mode ON</Text>
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.container, { opacity }]}> 
+        <Pressable onPress={() => setShowTip(true)} accessible accessibilityLabel="Focus Mode Info">
+          <Animated.View style={[styles.badge, { transform: [{ scale: combinedScale }] }]}>
+            <Text style={styles.text}>Focus Mode ON</Text>
+          </Animated.View>
+        </Pressable>
       </Animated.View>
-    </Animated.View>
+
+      <Modal visible={showTip} transparent animationType="fade" onRequestClose={() => setShowTip(false)}>
+        <View style={styles.tipOverlay}>
+          <View style={styles.tipCard}>
+            <Text style={styles.tipTitle}>Focus Mode</Text>
+            <Text style={styles.tipText}>
+              When enabled, the app monitors if you leave during Pomodoro sessions and shows warnings. It helps track distracted time and protects team streaks.
+            </Text>
+            <Pressable style={styles.tipClose} onPress={() => setShowTip(false)}>
+              <Text style={styles.tipCloseText}>Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    zIndex: 9999,
+  },
+  wrapper: {
     position: 'absolute',
     top: 10,
     right: 12,
@@ -91,6 +117,43 @@ const styles = StyleSheet.create({
   text: {
     color: COLORS.white,
     fontSize: 11,
+    fontWeight: '800',
+  },
+  tipOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  tipCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 18,
+    maxWidth: 420,
+    width: '100%',
+  },
+  tipTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.slate900,
+    marginBottom: 8,
+  },
+  tipText: {
+    fontSize: 14,
+    color: COLORS.slate700,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  tipClose: {
+    alignSelf: 'flex-end',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  tipCloseText: {
+    color: COLORS.white,
     fontWeight: '800',
   },
 });
