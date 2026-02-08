@@ -24,10 +24,10 @@ export interface Task {
   subtasks: SubTask[];
   points: number;
   completed: boolean;
-  createdAt?: Date;
-  completedAt?: Date;
   difficulty?: 'easy' | 'medium' | 'hard';
   estimatedMinutes?: number;
+  createdAt?: Date;
+  completedAt?: Date;
 }
 
 export interface SubTask {
