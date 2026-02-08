@@ -9,6 +9,7 @@ import {
   abortFocusSession,
   disposeFocusMode,
   isFocusModeEnabled,
+  addAppExitListener,
 } from '@/lib/focusModeService';
 import { initializeNotifications } from '@/lib/notificationService';
 import { Audio } from 'expo-av';
@@ -76,6 +77,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setAdvice(msg);
     };
     fetchAdvice();
+    
+    // Listen for app exits and apply altitude penalty
+    const unsubscribeExit = addAppExitListener((exitCount: number) => {
+      // Penalty decreases altitude by 200m per exit
+      const penalty = -200;
+      onHeightChange(penalty);
+    });
+    
     // load focus mode status for indicator
     (async () => {
       try {
@@ -85,6 +94,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // ignore
       }
     })();
+
+    return () => {
+      unsubscribeExit();
+    };
   }, [user.level]);
 
   useEffect(() => {
@@ -212,7 +225,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleSessionComplete = async () => {
     const focusMinutes = selectedPreset.focusMin;
     const pointsEarned = focusMinutes * 10;
-    const heightGain = focusMinutes * 10;
+    let heightGain = focusMinutes * 10;
+    
+    // Calculate focus percentage and award bonus altitude for high focus
+    if (currentFocusSession) {
+      const totalTime = Date.now() - currentFocusSession.startTime;
+      const timeAway = currentFocusSession.appLeaveTimes.reduce(
+        (sum, leave) => sum + (leave.returnedAt - leave.leftAt),
+        0
+      );
+      const focusPercentage = ((totalTime - timeAway) / totalTime) * 100;
+      
+      // Award bonus altitude if focus > 80%
+      if (focusPercentage > 80) {
+        const bonusHeight = Math.floor((focusPercentage - 80) * 5); // +5m per % over 80
+        heightGain += bonusHeight;
+      }
+    }
     
     onPointsChange(pointsEarned);
     onHeightChange(heightGain);

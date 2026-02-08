@@ -41,16 +41,29 @@ export const setFocusModeEnabled = async (enabled: boolean): Promise<void> => {
 
 // simple listener support for UI updates
 type FocusModeListener = (enabled: boolean) => void;
+type AppExitListener = (exitCount: number) => void;
 const focusModeListeners: Set<FocusModeListener> = new Set();
+const appExitListeners: Set<AppExitListener> = new Set();
 
 export const addFocusModeListener = (fn: FocusModeListener) => {
   focusModeListeners.add(fn);
   return () => focusModeListeners.delete(fn);
 };
 
+export const addAppExitListener = (fn: AppExitListener) => {
+  appExitListeners.add(fn);
+  return () => appExitListeners.delete(fn);
+};
+
 const notifyFocusModeListeners = (enabled: boolean) => {
   focusModeListeners.forEach(fn => {
     try { fn(enabled); } catch (e) { /* ignore listener errors */ }
+  });
+};
+
+const notifyAppExitListeners = (exitCount: number) => {
+  appExitListeners.forEach(fn => {
+    try { fn(exitCount); } catch (e) { /* ignore listener errors */ }
   });
 };
 
@@ -113,6 +126,9 @@ const handleAppStateChange = (state: AppStateStatus) => {
     if (sessionState.currentSession) {
       sessionState.lastBackground = Date.now();
       sessionState.currentSession.exitCount += 1;
+
+      // Notify listeners about app exit
+      notifyAppExitListeners(sessionState.currentSession.exitCount);
 
       // Send notification warning immediately
       const formatTime = (ms: number) => {
