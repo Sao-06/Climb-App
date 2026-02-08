@@ -1,10 +1,10 @@
+import { AppBlocker } from '@/components/AppBlocker';
 import { CharacterSelect } from '@/components/CharacterSelect';
-import AppBlocker from '@/components/AppBlocker';
 import { isFocusModeEnabled, _setFocusModeEnabledAndNotify } from '@/lib/focusModeService';
 import { COLORS } from '@/lib/constants';
 import { CharacterType } from '@/lib/types';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 export default function SettingsScreen() {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterType>('llama');
