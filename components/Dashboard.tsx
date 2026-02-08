@@ -21,6 +21,8 @@ interface DashboardProps {
   onPointsChange: (amount: number) => void;
   onHeightChange: (amount: number) => void;
   onSessionStateChange?: (isActive: boolean) => void;
+  focusRequest?: { presetId: string; token: number } | null;
+  onFocusRequestHandled?: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -29,7 +31,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   user,
   onPointsChange,
   onHeightChange,
-  onSessionStateChange
+  onSessionStateChange,
+  focusRequest,
+  onFocusRequestHandled
 }) => {
   const [activeTimer, setActiveTimer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -115,6 +119,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (interval) clearInterval(interval);
     };
   }, [activeTimer]);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    if (activeTimer !== null) {
+      onFocusRequestHandled?.();
+      return;
+    }
+
+    const preset = PRESETS.find(p => p.id === focusRequest.presetId) || PRESETS[0];
+    startSession(preset);
+    onFocusRequestHandled?.();
+  }, [focusRequest?.token]);
 
   const handleSessionComplete = () => {
     const focusMinutes = selectedPreset.focusMin;
