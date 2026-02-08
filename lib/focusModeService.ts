@@ -1,5 +1,6 @@
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from './asyncStorageMock';
+import { trackEvent } from './analyticsService';
 
 export interface FocusSession {
   id: string;
@@ -66,6 +67,7 @@ const notifyFocusModeListeners = (enabled: boolean) => {
 const originalSetFocusModeEnabled = setFocusModeEnabled;
 export const _setFocusModeEnabledAndNotify = async (enabled: boolean) => {
   await originalSetFocusModeEnabled(enabled);
+  try { await trackEvent('focus_mode.toggled', { enabled }); } catch (e) {}
   notifyFocusModeListeners(enabled);
 };
 
@@ -160,6 +162,7 @@ export const startFocusSession = (
   sessionState.currentSession = newSession;
   sessionState.lastBackground = null;
 
+  try { trackEvent('focus_session.started', { sessionId: newSession.id, presetName }); } catch (e) {}
   return newSession;
 };
 
@@ -191,6 +194,7 @@ export const endFocusSession = async (pointsEarned: number): Promise<FocusSessio
     const sessions: FocusSession[] = stored ? JSON.parse(stored) : [];
     sessions.push(session);
     await AsyncStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(sessions));
+    try { await trackEvent('focus_session.ended', { sessionId: session.id, presetName: session.presetName, totalFocusTime: session.totalFocusTime, exitCount: session.exitCount, pointsEarned: session.pointsEarned }); } catch (e) {}
   } catch (error) {
     console.error('Error saving focus session:', error);
   }
